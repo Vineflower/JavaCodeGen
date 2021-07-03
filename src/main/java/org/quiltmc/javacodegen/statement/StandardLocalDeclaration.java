@@ -8,6 +8,11 @@ public class StandardLocalDeclaration implements Statement, LocalDeclaration {
 	}
 
 	@Override
+	public void javaLike(StringBuilder builder, String indentation) {
+		throw new IllegalStateException();
+	}
+
+	@Override
 	public String toString() {
 		return "StandardLocalDeclaration";
 	}

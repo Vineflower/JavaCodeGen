@@ -13,6 +13,18 @@ public final class LabeledStatement extends Breakable {
 	}
 
 	@Override
+	public void javaLike(StringBuilder builder, String indentation) {
+		this.addLabel(builder, indentation);
+		this.inner.javaLike(builder,indentation);
+	}
+
+	@Override
+	boolean needsLabel() {
+		// always show label
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		return "LabeledStatement@" + System.identityHashCode(this) + "[" +
 				"inner=" + this.inner +
