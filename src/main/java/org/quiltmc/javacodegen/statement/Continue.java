@@ -1,4 +1,4 @@
-package org.quiltmc.javacodegen.action;
+package org.quiltmc.javacodegen.statement;
 
 public record Continue(Continuable target) implements SimpleSingleNoFallThroughStatement {
 	public Continue {

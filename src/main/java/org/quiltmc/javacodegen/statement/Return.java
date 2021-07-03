@@ -1,4 +1,4 @@
-package org.quiltmc.javacodegen.action;
+package org.quiltmc.javacodegen.statement;
 
 public class Return implements SimpleSingleNoFallThroughStatement {
 	@Override

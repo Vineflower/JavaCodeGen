@@ -1,4 +1,4 @@
-package org.quiltmc.javacodegen.action;
+package org.quiltmc.javacodegen.statement;
 
 import java.util.ArrayList;
 import java.util.List;

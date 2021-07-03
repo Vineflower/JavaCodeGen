@@ -1,4 +1,4 @@
-package org.quiltmc.javacodegen.action;
+package org.quiltmc.javacodegen.statement;
 
 public final class LabeledStatement extends Breakable {
 	private Statement inner;

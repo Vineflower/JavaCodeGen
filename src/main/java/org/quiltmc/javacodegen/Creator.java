@@ -1,6 +1,6 @@
 package org.quiltmc.javacodegen;
 
-import org.quiltmc.javacodegen.action.*;
+import org.quiltmc.javacodegen.statement.*;
 
 import java.util.Random;
 
