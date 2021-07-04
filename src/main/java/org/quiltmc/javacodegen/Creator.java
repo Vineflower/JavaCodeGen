@@ -77,7 +77,7 @@ public class Creator {
 			if (random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement();
+			WhileStatement whileStatement = new WhileStatement(new ExpressionStatement()); // TODO: add different conditions
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
@@ -172,7 +172,7 @@ public class Creator {
 		Statement statement = (new Creator()).createScope(
 				false,
 				new Context(),
-				new Params(100)
+				new Params(10)
 		);
 		System.out.println(statement);
 

@@ -1,11 +1,13 @@
 package org.quiltmc.javacodegen.statement;
 
 public final class WhileStatement extends Continuable {
+	private final Statement condition;
 	private Statement block;
 
 	public WhileStatement(
-			/* TODO: expression */
+			Statement condition
 	) {
+		this.condition = condition;
 	}
 
 	public void setBlock(Statement block) {
@@ -22,7 +24,10 @@ public final class WhileStatement extends Continuable {
 		// check if we need a label
 		this.addLabel(builder, indentation);
 
-		builder.append(indentation).append("while (...) \n");
+		StringBuilder cond = new StringBuilder();
+		this.condition.javaLike(cond, "");
+
+		builder.append(indentation).append("while (").append(cond.toString().trim()).append(") \n");
 		this.block.javaLike(builder,indentation + (this.block instanceof Scope?"":"\t"));
 	}
 
