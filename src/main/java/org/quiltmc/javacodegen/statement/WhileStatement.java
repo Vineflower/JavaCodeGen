@@ -34,6 +34,7 @@ public final class WhileStatement extends Continuable {
 	@Override
 	public String toString() {
 		return "WhileStatement@" + System.identityHashCode(this) + "[" +
+				"cond=" + this.condition + ']' +
 				"block=" + this.block + ']';
 	}
 

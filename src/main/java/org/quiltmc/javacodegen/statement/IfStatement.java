@@ -1,7 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
 public record IfStatement(
-		/* TODO: expression */
+		Statement condition,
 		Statement ifTrue,
 		Statement ifFalse
 ) implements Statement {
@@ -13,7 +13,10 @@ public record IfStatement(
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
-		builder.append(indentation).append("if (...) ").append('\n');
+		StringBuilder cond = new StringBuilder();
+		this.condition.javaLike(cond, "");
+
+		builder.append(indentation).append("if (").append(cond.toString().trim()).append(") ").append('\n');
 		this.ifTrue.javaLike(builder,indentation + (this.ifTrue instanceof Scope?"":"\t"));
 		if(this.ifFalse != null){
 			builder.append(indentation).append("else \n");
@@ -24,6 +27,7 @@ public record IfStatement(
 	@Override
 	public String toString() {
 		return "IfStatement[\n" +
+				"cond=" + this.condition +
 				"ifTrue=" + this.ifTrue + (this.ifFalse == null
 				? "\n]"
 				: "\nifFalse=" + this.ifFalse + "\n]"

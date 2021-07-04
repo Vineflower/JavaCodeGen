@@ -49,9 +49,11 @@ public class Creator {
 	}
 
 	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params) {
+		// TODO: expressions for all of these
 		if (completesNormally) {
 			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
+						new ExpressionStatement(),
 						this.createMaybeScope(random.nextInt(3) != 0, context, params),
 						null
 				);
@@ -61,11 +63,13 @@ public class Creator {
 		var sub = params.div(1.5);
 		if (!completesNormally || random.nextInt(3) == 0) {
 			return new IfStatement(
+					new ExpressionStatement(),
 					this.createMaybeScope(false, context, sub),
 					this.createMaybeScope(completesNormally, context, sub)
 			);
 		} else {
 			return new IfStatement(
+					new ExpressionStatement(),
 					this.createMaybeScope(true, context, sub),
 					this.createMaybeScope(random.nextInt(3) != 0, context, sub)
 			);
