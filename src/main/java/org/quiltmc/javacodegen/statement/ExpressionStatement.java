@@ -8,7 +8,7 @@ public class ExpressionStatement implements SimpleSingleCompletingStatement {
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
-		builder.append(indentation).append("...\n");
+		builder.append(indentation).append("System.out.println(" + System.identityHashCode(this) +");\n");
 	}
 
 	@Override

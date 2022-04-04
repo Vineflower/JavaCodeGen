@@ -17,7 +17,7 @@ public record Break(Breakable target, boolean simple) implements SimpleSingleNoF
 		if (this.simple) {
 			builder.append(indentation).append("break;\n");
 		} else {
-			builder.append(indentation).append("break @label_").append(this.target.getId()).append(";\n");
+			builder.append(indentation).append("break label_").append(this.target.getId()).append(";\n");
 		}
 	}
 }

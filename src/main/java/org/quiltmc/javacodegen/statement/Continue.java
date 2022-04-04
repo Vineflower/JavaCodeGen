@@ -18,7 +18,7 @@ public record Continue(Continuable target, boolean simple) implements SimpleSing
 		if (this.simple) {
 			builder.append(indentation).append("continue;\n");
 		} else {
-			builder.append(indentation).append("continue @label_").append(this.target.getId()).append(";\n");
+			builder.append(indentation).append("continue label_").append(this.target.getId()).append(";\n");
 		}
 	}
 

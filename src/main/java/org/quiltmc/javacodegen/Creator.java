@@ -53,7 +53,7 @@ public class Creator {
 		if (completesNormally) {
 			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
-						new ExpressionStatement(),
+						new ConditionStatement(),
 						this.createMaybeScope(random.nextInt(3) != 0, context, params),
 						null
 				);
@@ -63,13 +63,13 @@ public class Creator {
 		var sub = params.div(1.5);
 		if (!completesNormally || random.nextInt(3) == 0) {
 			return new IfStatement(
-					new ExpressionStatement(),
+					new ConditionStatement(),
 					this.createMaybeScope(false, context, sub),
 					this.createMaybeScope(completesNormally, context, sub)
 			);
 		} else {
 			return new IfStatement(
-					new ExpressionStatement(),
+					new ConditionStatement(),
 					this.createMaybeScope(true, context, sub),
 					this.createMaybeScope(random.nextInt(3) != 0, context, sub)
 			);
@@ -81,7 +81,7 @@ public class Creator {
 			if (random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement(new ExpressionStatement()); // TODO: add different conditions
+			WhileStatement whileStatement = new WhileStatement(new ConditionStatement()); // TODO: add different conditions
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
