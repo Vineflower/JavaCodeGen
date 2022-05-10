@@ -176,7 +176,7 @@ public class Creator {
 		Statement statement = (new Creator()).createScope(
 				false,
 				new Context(),
-				new Params(10)
+				new Params(5)
 		);
 		System.out.println(statement);
 

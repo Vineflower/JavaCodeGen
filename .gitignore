@@ -19,3 +19,8 @@ classes/
 bin/
 .classpath
 .project
+
+# Project specific
+
+fuzzed/
+compiled/
