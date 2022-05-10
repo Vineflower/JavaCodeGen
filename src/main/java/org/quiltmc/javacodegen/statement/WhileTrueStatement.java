@@ -1,5 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.vars.VarsEntry;
+
 public final class WhileTrueStatement extends Continuable {
 	private Statement block;
 
@@ -10,6 +12,11 @@ public final class WhileTrueStatement extends Continuable {
 
 	public void setBlock(Statement block) {
 		this.block = block;
+	}
+
+	@Override
+	public VarsEntry varsFor() {
+		return this.block.varsFor();
 	}
 
 	@Override

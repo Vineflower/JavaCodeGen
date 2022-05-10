@@ -1,5 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.vars.VarsEntry;
+
 public record IfStatement(
 		Statement condition,
 		Statement ifTrue,
@@ -22,6 +24,11 @@ public record IfStatement(
 			builder.append(indentation).append("else \n");
 			this.ifFalse.javaLike(builder,indentation + (this.ifFalse instanceof Scope?"":"\t"));
 		}
+	}
+
+	@Override
+	public VarsEntry varsFor() {
+		return this.condition.varsFor();
 	}
 
 	@Override

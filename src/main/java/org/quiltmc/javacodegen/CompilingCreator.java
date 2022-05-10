@@ -1,7 +1,10 @@
 package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.statement.Statement;
+import org.quiltmc.javacodegen.vars.VarsEntry;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -13,7 +16,8 @@ public final class CompilingCreator {
             Statement statement = (new Creator()).createScope(
                     false,
                     new Context(),
-                    new Creator.Params(5)
+                    new Creator.Params(5),
+                    new VarsEntry()
             );
 
             Paths.get(".", "fuzzed").toFile().mkdirs();
@@ -31,6 +35,14 @@ public final class CompilingCreator {
             Files.write(Paths.get(".", "fuzzed", "FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
         }
 
-        Runtime.getRuntime().exec("javac " + Paths.get(".", "fuzzed").toAbsolutePath() + "\\*.java -d " + Paths.get(".", "compiled").toAbsolutePath());
+        Process exec = Runtime.getRuntime().exec("javac -g " + Paths.get(".", "fuzzed").toAbsolutePath() + "\\*.java -d " + Paths.get(".", "compiled").toAbsolutePath());
+
+        BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
+
+        String s;
+
+        while ((s = serr.readLine()) != null) {
+            System.out.println(s);
+        }
     }
 }

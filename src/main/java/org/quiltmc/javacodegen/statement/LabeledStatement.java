@@ -1,5 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.vars.VarsEntry;
+
 public final class LabeledStatement extends Breakable {
 	private Statement inner;
 
@@ -22,6 +24,11 @@ public final class LabeledStatement extends Breakable {
 	boolean needsLabel() {
 		// always show label
 		return true;
+	}
+
+	@Override
+	public VarsEntry varsFor() {
+		return this.inner.varsFor();
 	}
 
 	@Override

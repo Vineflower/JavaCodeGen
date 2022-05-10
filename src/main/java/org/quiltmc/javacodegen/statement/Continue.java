@@ -1,5 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.vars.VarsEntry;
+
 public record Continue(Continuable target, boolean simple) implements SimpleSingleNoFallThroughStatement {
 	public Continue {
 		target.addContinue(this);
@@ -12,6 +14,10 @@ public record Continue(Continuable target, boolean simple) implements SimpleSing
 				"simple=" + this.simple + "]";
 	}
 
+	@Override
+	public VarsEntry varsFor() {
+		return this.target.varsFor();
+	}
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {

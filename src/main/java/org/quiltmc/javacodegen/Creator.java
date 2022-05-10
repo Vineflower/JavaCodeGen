@@ -1,6 +1,7 @@
 package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.statement.*;
+import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.Random;
 
@@ -8,53 +9,53 @@ public class Creator {
 	// Not thread safe?
 	private static final Random random = new Random();
 
-	ExpressionStatement createExpressionStatement() {
-		//if(random.nextInt(5) == 0)
-		//	return new StandardLocalDeclaration();
-		//else
-		return new ExpressionStatement();
+	ExpressionStatement createExpressionStatement(VarsEntry vars) {
+		if(random.nextInt(3) == 0)
+			return new VarDefStatement(vars);
+		else
+			return new ExpressionStatement(vars.copy());
 	}
 
-	SimpleSingleCompletingStatement createSimpleSingleCompletingStatement() {
+	SimpleSingleCompletingStatement createSimpleSingleCompletingStatement(VarsEntry vars) {
 		return random.nextInt(20) == 0
 				? new EmptyStatement()
-				: this.createExpressionStatement();
+				: this.createExpressionStatement(vars);
 	}
 
 	SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context) {
 		return context.createBreak();
 	}
 
-	SingleStatement createSingleStatement(boolean completesNormally, Context context) {
+	SingleStatement createSingleStatement(boolean completesNormally, Context context, VarsEntry vars) {
 		if (completesNormally) {
-			return this.createSimpleSingleCompletingStatement();
+			return this.createSimpleSingleCompletingStatement(vars);
 		} else {
 			return this.createSimpleSingleNoFallThroughStatement(context);
 		}
 	}
 
-	Statement createStatement(boolean completesNormally, Context context, Params params) {
+	Statement createStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (random.nextDouble() * random.nextDouble() * params.size <= .5) {
-			return this.createSingleStatement(completesNormally, context);
+			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
 		return switch (random.nextInt(7)) {
-			case 0 -> this.createLabeledStatement(completesNormally, context, params);
-			case 1 -> this.createScope(completesNormally, context, params);
-			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params);
-			case 5, 6 -> this.createWhileStatement(completesNormally, context, params);
+			case 0 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
+			case 1 -> this.createScope(completesNormally, context, params, vars.copy());
+			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
+			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
 	}
 
-	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params) {
+	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		// TODO: expressions for all of these
 		if (completesNormally) {
 			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
-						new ConditionStatement(),
-						this.createMaybeScope(random.nextInt(3) != 0, context, params),
+						new ConditionStatement(vars.copy()),
+						this.createMaybeScope(random.nextInt(3) != 0, context, params, vars.copy()),
 						null
 				);
 			}
@@ -63,29 +64,29 @@ public class Creator {
 		var sub = params.div(1.5);
 		if (!completesNormally || random.nextInt(3) == 0) {
 			return new IfStatement(
-					new ConditionStatement(),
-					this.createMaybeScope(false, context, sub),
-					this.createMaybeScope(completesNormally, context, sub)
+					new ConditionStatement(vars.copy()),
+					this.createMaybeScope(false, context, sub, vars.copy()),
+					this.createMaybeScope(completesNormally, context, sub, vars.copy())
 			);
 		} else {
 			return new IfStatement(
-					new ConditionStatement(),
-					this.createMaybeScope(true, context, sub),
-					this.createMaybeScope(random.nextInt(3) != 0, context, sub)
+					new ConditionStatement(vars.copy()),
+					this.createMaybeScope(true, context, sub, vars.copy()),
+					this.createMaybeScope(random.nextInt(3) != 0, context, sub, vars.copy())
 			);
 		}
 	}
 
-	private Statement createWhileStatement(boolean completesNormally, Context context, Params params) {
+	private Statement createWhileStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (completesNormally) {
 			if (random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement(new ConditionStatement()); // TODO: add different conditions
+			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy())); // TODO: add different conditions
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params));
+			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			context.removeBreak(whileStatement);
 			return whileStatement;
@@ -94,40 +95,52 @@ public class Creator {
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
 			context.addContinuable(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params));
+			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			return whileStatement;
 		}
 	}
 
-	private LabeledStatement createLabeledStatement(boolean completesNormally, Context context, Params params) {
+	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		LabeledStatement label = new LabeledStatement();
+
+		Statement st = this.createStatement(true, context, params, vars.copy());
+
+		if (st instanceof LabelImpossible) {
+			return st;
+		}
+
 		if (completesNormally) {
 			context.addBreak(label);
 
 			// TODO: also allow it to not complete normally and as long as there is at least one break to this one
 			label.setInner(
-					this.createStatement(true, context, params)
+					st
 			);
 			context.removeBreak(label);
 		} else {
 			label.setInner(
-					this.createStatement(false, context, params)
+					st
 			);
 		}
+
 		return label;
 	}
 
-	Statement createMaybeScope(boolean completesNormally, Context context, Params params) {
+	Statement createMaybeScope(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (random.nextInt(params.size < 3 ? 2 : 4) == 0) {
-			return this.createStatement(completesNormally, context, params);
+			Scope scope = new Scope(vars.copy());
+
+			scope.addStatement(this.createStatement(completesNormally, context, params, vars.copy()));
+
+			return scope;
 		} else{
-			return this.createScope(completesNormally, context, params);
+			return this.createScope(completesNormally, context, params, vars.copy());
 		}
 	}
 
-	Scope createScope(boolean completesNormally, Context context, Params params) {
-		Scope scope = new Scope();
+	Scope createScope(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		Scope scope = new Scope(vars);
 
 		int targetSize = params.targetSize() + (completesNormally ? 0 : 1);
 		if (targetSize == 0) {
@@ -140,13 +153,13 @@ public class Creator {
 
 		// all but the last statement have to complete normally
 		for (int i = 1; i < targetSize; i++) {
-			scope.AddStatement(
-					this.createStatement(true, context, sub)
+			scope.addStatement(
+					this.createStatement(true, context, sub, vars)
 			);
 		}
 
-		scope.AddStatement(
-				this.createStatement(completesNormally, context, sub)
+		scope.addStatement(
+				this.createStatement(completesNormally, context, sub, vars)
 		);
 
 		return scope;
@@ -160,7 +173,7 @@ public class Creator {
 			return new Params(this.size / scale);
 		}
 
-		// poison distribution
+		// poisson distribution
 		int targetSize() {
 			int res = 0;
 			double p = 1;
@@ -176,7 +189,8 @@ public class Creator {
 		Statement statement = (new Creator()).createScope(
 				false,
 				new Context(),
-				new Params(5)
+				new Params(5),
+				new VarsEntry()
 		);
 		System.out.println(statement);
 
