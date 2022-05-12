@@ -48,6 +48,9 @@ public class VarDefStatement implements SimpleSingleCompletingStatement, LabelIm
 
 		public void javaLike(StringBuilder builder) {
 			var.javaLike(builder);
+			for(int i = 0; i < arrayDepth; i++) {
+				builder.append("[]");
+			}
 			if (value != null) {
 				builder.append(" = ");
 				value.javaLike(builder);

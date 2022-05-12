@@ -3,7 +3,7 @@ package org.quiltmc.javacodegen.expression;
 
 import org.quiltmc.javacodegen.types.Type;
 
-public record Literal(
+public record LiteralExpression(
 		Type type,
 		Object value
 ) implements Expression{

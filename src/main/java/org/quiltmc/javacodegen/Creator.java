@@ -2,15 +2,15 @@ package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.statement.*;
-import org.quiltmc.javacodegen.types.*;
+import org.quiltmc.javacodegen.types.ArrayType;
+import org.quiltmc.javacodegen.types.PrimitiveTypes;
+import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
-import org.quiltmc.javacodegen.vars.VarState;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 public class Creator {
@@ -21,14 +21,14 @@ public class Creator {
 		if (random.nextInt(3) == 0)
 			return createVarDefStatement(vars); // var def statements aren't considered expressions statements in the spec
 		else
-			return new ExpressionStatement(vars.copy(), this.createStandaloneExpression(null, vars));
+			return new ExpressionStatement(vars.copy(), ExpressionCreator.createStandaloneExpression(null, vars));
 	}
 
 	VarDefStatement createVarDefStatement(VarsEntry vars) {
-		Type outerType = this.createType();
+		Type outerType = TypeCreator.createType();
 		if (random.nextInt(5) != 0) {
 			// simple single var
-			Expression value = random.nextInt(3) == 0 ? null : this.createExpression(outerType, vars);
+			Expression value = random.nextInt(3) == 0 ? null : ExpressionCreator.createExpression(outerType, vars);
 			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, value != null);
 			return new VarDefStatement(vars, outerType,
@@ -41,7 +41,7 @@ public class Creator {
 			for (int i = 0; i < varCount; i++) {
 				int depth = random.nextInt(5) == 0 ? poisson(3) : 0;
 				Type innerType = ArrayType.ofDepth(outerType, depth);
-				Expression value = random.nextInt(3) == 0 ? null : this.createExpression(innerType, vars);
+				Expression value = random.nextInt(3) == 0 ? null : ExpressionCreator.createExpression(innerType, vars);
 				final Var var = new Var(vars.nextName(), innerType, FinalType.NOT_FINAL);
 				vars.create(var, value != null);
 				varDeclarations.add(new VarDefStatement.VarDeclaration(var, depth, value));
@@ -51,51 +51,6 @@ public class Creator {
 		}
 
 	}
-
-	private Expression createExpression(Type targetType, VarsEntry vars) {
-		return builder -> TypeCreator.random(random, targetType, builder);
-	}
-
-	private Expression createStandaloneExpression(Type targetType, VarsEntry vars) {
-		if(!vars.vars.isEmpty() && random.nextInt(3) != -1) {
-			int i = vars.vars.size();
-			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
-				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
-					if(random.nextInt(i) == 0) {
-						return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
-					}
-				}
-				i--;
-			}
-		}
-		return builder -> builder.append("System.out.println(\"Hi\")");
-	}
-
-	Type createType() {
-		return switch (random.nextInt(20)) {
-			case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> this.createPrimitiveType();
-			case 10 -> this.createPrimitiveType().Box();
-			case 11, 12 -> new ArrayType(this.createType());
-			case 13, 14, 15 -> BasicType.OBJECT;
-			case 16, 17, 18, 19 -> BasicType.STRING;
-			default -> throw new IllegalStateException();
-		};
-	}
-
-	PrimitiveTypes createPrimitiveType() {
-		return switch (random.nextInt(20)) {
-			case 0, 1, 2, 3, 4, 5 -> PrimitiveTypes.INT;
-			case 6, 7, 8, 9 -> PrimitiveTypes.LONG;
-			case 10, 11, 12, 13 -> PrimitiveTypes.FLOAT;
-			case 14, 15 -> PrimitiveTypes.DOUBLE;
-			case 16 -> PrimitiveTypes.BOOLEAN;
-			case 17 -> PrimitiveTypes.BYTE;
-			case 18 -> PrimitiveTypes.CHAR;
-			case 19 -> PrimitiveTypes.SHORT;
-			default -> throw new IllegalStateException();
-		};
-	}
-
 
 	SimpleSingleCompletingStatement createSimpleSingleCompletingStatement(VarsEntry vars) {
 		return random.nextInt(20) == 0
@@ -135,7 +90,7 @@ public class Creator {
 		if (completesNormally) {
 			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
-						new ConditionStatement(vars.copy(), this.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+						new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
 						this.createMaybeScope(random.nextInt(3) != 0, context, params, vars.copy()),
 						null
 				);
@@ -145,13 +100,13 @@ public class Creator {
 		var sub = params.div(1.5);
 		if (!completesNormally || random.nextInt(3) == 0) {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), this.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+					new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
 					this.createMaybeScope(false, context, sub, vars.copy()),
 					this.createMaybeScope(completesNormally, context, sub, vars.copy())
 			);
 		} else {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), this.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+					new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
 					this.createMaybeScope(true, context, sub, vars.copy()),
 					this.createMaybeScope(random.nextInt(3) != 0, context, sub, vars.copy())
 			);
@@ -163,7 +118,7 @@ public class Creator {
 			if (random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), this.createExpression(PrimitiveTypes.BOOLEAN, vars))); // TODO: add different conditions
+			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars))); // TODO: add different conditions
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
@@ -256,6 +211,7 @@ public class Creator {
 
 		// poisson distribution
 		int targetSize() {
+			Object[][] test = new Object[5][];
 			return poisson(this.size);
 		}
 	}
@@ -264,7 +220,7 @@ public class Creator {
 		Statement statement = (new Creator()).createScope(
 				false,
 				new Context(),
-				new Params(5),
+				new Params(20),
 				new VarsEntry()
 		);
 		System.out.println(statement);

@@ -12,20 +12,28 @@ public enum PrimitiveTypes implements Type {
 	;
 
 	private final String primitiveName;
-	private final String boxedName;
+	private final Boxed boxed;
 
 	PrimitiveTypes(String primitive, String boxed) {
 		this.primitiveName = primitive;
-		this.boxedName = boxed;
+		this.boxed = new Boxed(boxed, this);
 	}
 
-	public Type Box() {
-		return (builder) -> builder.append(this.boxedName);
+	public Boxed Box() {
+		return this.boxed;
 	}
 
 
 	@Override
 	public void javaLike(StringBuilder builder) {
 		builder.append(this.primitiveName);
+	}
+
+	public record Boxed(String name, PrimitiveTypes type) implements Type {
+
+		@Override
+		public void javaLike(StringBuilder builder) {
+			builder.append(this.name);
+		}
 	}
 }
