@@ -1,12 +1,11 @@
 package org.quiltmc.javacodegen.statement;
 
-import org.quiltmc.javacodegen.Expression.Expression;
+import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.Var;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.List;
-import java.util.Random;
 
 public class VarDefStatement implements SimpleSingleCompletingStatement, LabelImpossible {
 	private VarsEntry vars;
@@ -27,14 +26,14 @@ public class VarDefStatement implements SimpleSingleCompletingStatement, LabelIm
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation);
-		this.outerVarType.javaLike(builder, indentation);
+		this.outerVarType.javaLike(builder);
 		builder.append(" ");
 		boolean first = true;
 		for (VarDeclaration varDeclaration : varDeclarations) {
 			if (!first) {
 				builder.append(", ");
 			}
-			varDeclaration.javaLike(builder, indentation);
+			varDeclaration.javaLike(builder);
 
 			first = false;
 		}
@@ -47,8 +46,8 @@ public class VarDefStatement implements SimpleSingleCompletingStatement, LabelIm
 			Expression value // nullable
 	) {
 
-		public void javaLike(StringBuilder builder, String indentation) {
-			var.javaLike(builder, indentation);
+		public void javaLike(StringBuilder builder) {
+			var.javaLike(builder);
 			if (value != null) {
 				builder.append(" = ");
 				value.javaLike(builder);

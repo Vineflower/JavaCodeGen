@@ -1,6 +1,6 @@
 package org.quiltmc.javacodegen;
 
-import org.quiltmc.javacodegen.Expression.Expression;
+import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.statement.*;
 import org.quiltmc.javacodegen.types.ArrayType;
 import org.quiltmc.javacodegen.types.BasicType;

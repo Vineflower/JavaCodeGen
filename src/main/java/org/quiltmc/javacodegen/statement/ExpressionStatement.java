@@ -1,10 +1,7 @@
 package org.quiltmc.javacodegen.statement;
 
-import org.quiltmc.javacodegen.Expression.Expression;
-import org.quiltmc.javacodegen.vars.Var;
+import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
-
-import java.util.Random;
 
 public class ExpressionStatement implements SimpleSingleCompletingStatement {
 

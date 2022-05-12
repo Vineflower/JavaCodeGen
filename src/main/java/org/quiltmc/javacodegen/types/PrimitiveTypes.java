@@ -20,12 +20,12 @@ public enum PrimitiveTypes implements Type {
 	}
 
 	public Type Box() {
-		return (builder, indentation) -> builder.append(this.boxedName);
+		return (builder) -> builder.append(this.boxedName);
 	}
 
 
 	@Override
-	public void javaLike(StringBuilder builder, String indentation) {
+	public void javaLike(StringBuilder builder) {
 		builder.append(this.primitiveName);
 	}
 }

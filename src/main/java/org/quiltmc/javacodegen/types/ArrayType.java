@@ -10,8 +10,8 @@ public record ArrayType(Type base) implements Type {
 	}
 
 	@Override
-	public void javaLike(StringBuilder builder, String indentation) {
-		this.base.javaLike(builder, indentation);
+	public void javaLike(StringBuilder builder) {
+		this.base.javaLike(builder);
 		builder.append("[]");
 	}
 }

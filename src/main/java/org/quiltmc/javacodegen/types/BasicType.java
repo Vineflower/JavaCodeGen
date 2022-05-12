@@ -5,7 +5,7 @@ public record BasicType(String name) implements Type {
 	public static final BasicType STRING = new BasicType("String");
 
 	@Override
-	public void javaLike(StringBuilder builder, String indentation) {
+	public void javaLike(StringBuilder builder) {
 		builder.append(this.name);
 	}
 }
