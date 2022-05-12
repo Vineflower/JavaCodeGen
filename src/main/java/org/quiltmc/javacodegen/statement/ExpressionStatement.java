@@ -1,5 +1,6 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.Expression.Expression;
 import org.quiltmc.javacodegen.vars.Var;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
@@ -7,16 +8,13 @@ import java.util.Random;
 
 public class ExpressionStatement implements SimpleSingleCompletingStatement {
 
-	private VarsEntry vars;
+	private final VarsEntry vars;
+	private final Expression expression;
 
-	public ExpressionStatement(VarsEntry vars) {
-
+	public ExpressionStatement(VarsEntry vars, Expression expression) {
 		this.vars = vars;
-	}
-
-	@Override
-	public boolean completesNormally() {
-		return true;
+		this.expression = expression;
+		assert expression != null;
 	}
 
 	@Override
@@ -27,17 +25,8 @@ public class ExpressionStatement implements SimpleSingleCompletingStatement {
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation);
-
-		builder.append("System.out.println(");
-		// TODO: move to constructor
-		if (new Random().nextInt(2) == 0 && !vars.vars.isEmpty()) {
-			new Var.Ref(vars.vars.get(new Random().nextInt(vars.vars.size())))
-					.javaLike(builder, indentation);
-		} else {
-			builder.append(System.identityHashCode(this));
-		}
-
-		builder.append(");\n");
+		this.expression.javaLike(builder);
+		builder.append(";\n");
 	}
 
 	@Override

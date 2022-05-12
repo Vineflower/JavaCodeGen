@@ -1,10 +1,11 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.Expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 public class ConditionStatement extends ExpressionStatement {
-    public ConditionStatement(VarsEntry vars) {
-        super(vars);
+    public ConditionStatement(VarsEntry vars, Expression expression) {
+        super(vars, expression);
     }
 
     @Override
