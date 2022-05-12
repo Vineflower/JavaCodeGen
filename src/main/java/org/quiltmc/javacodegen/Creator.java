@@ -2,10 +2,7 @@ package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.statement.*;
-import org.quiltmc.javacodegen.types.ArrayType;
-import org.quiltmc.javacodegen.types.BasicType;
-import org.quiltmc.javacodegen.types.PrimitiveTypes;
-import org.quiltmc.javacodegen.types.Type;
+import org.quiltmc.javacodegen.types.*;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
 import org.quiltmc.javacodegen.vars.VarState;
@@ -56,7 +53,7 @@ public class Creator {
 	}
 
 	private Expression createExpression(Type targetType, VarsEntry vars) {
-		return builder -> builder.append("Hello");
+		return builder -> TypeCreator.random(random, targetType, builder);
 	}
 
 	private Expression createStandaloneExpression(Type targetType, VarsEntry vars) {
