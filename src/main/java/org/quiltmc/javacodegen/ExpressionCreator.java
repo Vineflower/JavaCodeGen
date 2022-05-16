@@ -80,31 +80,7 @@ public class ExpressionCreator {
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
 					if (random.nextInt(i) == 0) {
-						if (varVarStateEntry.getKey().type() instanceof PrimitiveTypes primitiveType) {
-							if (primitiveType == PrimitiveTypes.BOOLEAN) {
-								return builder -> builder.append(random.nextBoolean() ? "!" : "").append(varVarStateEntry.getKey().name());
-							} else if (primitiveType == PrimitiveTypes.CHAR) {
-								return builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? " != " : " == ")
-										.append("'").append((char) (random.nextInt(26) + 'a')).append("'");
-							}
-
-							String cond = switch (random.nextInt(6)) {
-								case 0 -> "!=";
-								case 1 -> "==";
-								case 2 -> ">";
-								case 3 -> "<";
-								case 4 -> ">=";
-								case 5 -> "<=";
-								default -> throw new IllegalStateException();
-							};
-
-							return builder -> {
-								builder.append(varVarStateEntry.getKey().name()).append(" ").append(cond).append(" ");
-								createPrimitiveConstantExpression(primitiveType).javaLike(builder);
-							};
-						} else {
-							return builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? " != null" : " == null");
-						}
+						return buildCondition(varVarStateEntry.getKey());
 					}
 				}
 				i--;
@@ -112,6 +88,74 @@ public class ExpressionCreator {
 		}
 
 		return builder -> builder.append("new Random().nextBoolean()");
+	}
+
+	static Expression buildCondition(Var var) {
+		if (var.type() instanceof PrimitiveTypes primitiveType) {
+			if (primitiveType == PrimitiveTypes.BOOLEAN) {
+				return builder -> builder.append(random.nextBoolean() ? "!" : "").append(var.name());
+			} else if (primitiveType == PrimitiveTypes.CHAR) {
+				return builder -> builder.append(var.name()).append(random.nextBoolean() ? " != " : " == ")
+						.append("'").append((char) (random.nextInt(26) + 'a')).append("'");
+			}
+
+			String cond = switch (random.nextInt(6)) {
+				case 0 -> "!=";
+				case 1 -> "==";
+				case 2 -> ">";
+				case 3 -> "<";
+				case 4 -> ">=";
+				case 5 -> "<=";
+				default -> throw new IllegalStateException();
+			};
+
+			return builder -> {
+				builder.append(var.name()).append(" ").append(cond).append(" ");
+				createPrimitiveConstantExpression(primitiveType).javaLike(builder);
+			};
+		} else {
+			return builder -> builder.append(var.name()).append(random.nextBoolean() ? " != null" : " == null");
+		}
+	}
+
+	static Expression buildIncrement(VarsEntry vars) {
+		if (!vars.vars.isEmpty() && random.nextInt(8) != 0) {
+			int i = vars.vars.size();
+			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
+				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
+					if (random.nextInt(i) == 0) {
+						return buildIncrement(varVarStateEntry.getKey());
+					}
+				}
+				i--;
+			}
+		}
+
+		return builder -> builder.append("new Random().nextInt()");
+	}
+
+	static Expression buildIncrement(Var var) {
+		Expression value = b -> b.append("/* Unknown increment value!! */");
+		if (var.type() instanceof PrimitiveTypes primitiveType) {
+			value = createPrimitiveConstantExpression(primitiveType);
+		} else if (var.type() instanceof PrimitiveTypes.Boxed boxed) {
+			value = createPrimitiveConstantExpression(boxed.type());
+		}
+
+		// TODO: %=, &=, |=, ^=, <<=, >>=, >>>= for integral types only
+
+		String incr = switch (random.nextInt(4)) {
+			case 0 -> "+=";
+			case 1 -> "-=";
+			case 2 -> "*=";
+			case 3 -> "/=";
+			default -> throw new IllegalStateException();
+		};
+
+		StringBuilder val = new StringBuilder();
+		value.javaLike(val);
+
+		return builder -> builder.append(var.name()).append(" ").append(incr).append(" ").append(val);
 	}
 
 	static LiteralExpression createPrimitiveConstantExpression(PrimitiveTypes primitiveType) {

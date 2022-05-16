@@ -3,7 +3,6 @@ package org.quiltmc.javacodegen;
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.statement.*;
 import org.quiltmc.javacodegen.types.ArrayType;
-import org.quiltmc.javacodegen.types.PrimitiveTypes;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
@@ -75,11 +74,12 @@ public class Creator {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(7)) {
+		return switch (random.nextInt(9)) {
 			case 0 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
+			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
@@ -127,6 +127,42 @@ public class Creator {
 			context.removeBreak(whileStatement);
 			return whileStatement;
 		} else {
+			// while true without a break
+			WhileTrueStatement whileStatement = new WhileTrueStatement();
+			context.addContinuable(whileStatement);
+			// doesn't matter if it the inner completes normally or not
+			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			context.removeContinuable(whileStatement);
+			return whileStatement;
+		}
+	}
+
+	private Statement createForStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		if (completesNormally) {
+			if (random.nextInt(5) == 0) {
+				// TODO add must break
+			}
+			Type outerType = TypeCreator.createNumericalType();
+			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
+			vars.create(var, true);
+
+			// TODO: weirder for loops (i.e. init, cond, incr not using the same var)
+
+			ForStatement forStatement = new ForStatement(
+					new VarDefStatement.VarDeclaration(var, 0, ExpressionCreator.createExpression(outerType, vars)),
+					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(var)),
+					ExpressionCreator.buildIncrement(var), vars);
+
+			context.addContinuable(forStatement);
+			context.addBreak(forStatement);
+			// doesn't matter if it the inner completes normally or not
+			forStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			context.removeContinuable(forStatement);
+			context.removeBreak(forStatement);
+			return forStatement;
+		} else {
+			// TODO: non completing for?
+
 			// while true without a break
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
 			context.addContinuable(whileStatement);
