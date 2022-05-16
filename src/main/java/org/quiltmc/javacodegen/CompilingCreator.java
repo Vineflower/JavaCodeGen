@@ -15,6 +15,7 @@ public final class CompilingCreator {
         for (int i = 0; i < count; i++) {
             Statement statement = (new Creator()).createScope(
                     false,
+                    true,
                     new Context(),
                     new Creator.Params(5),
                     new VarsEntry()

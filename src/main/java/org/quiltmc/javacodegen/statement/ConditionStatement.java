@@ -10,7 +10,10 @@ public class ConditionStatement extends ExpressionStatement {
 
     @Override
     public void javaLike(StringBuilder builder, String indentation) {
-        builder.append(indentation).append("new Random().nextBoolean()\n");
+        StringBuilder expr = new StringBuilder();
+        this.expression.javaLike(expr);
+
+        builder.append(indentation).append(expr).append("\n");
     }
 
     @Override

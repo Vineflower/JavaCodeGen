@@ -19,12 +19,12 @@ public class Creator {
 
 	SimpleSingleCompletingStatement createExpressionStatement(VarsEntry vars) {
 		if (random.nextInt(3) == 0)
-			return createVarDefStatement(vars); // var def statements aren't considered expressions statements in the spec
+			return createVarDefStatement(vars, 3); // var def statements aren't considered expressions statements in the spec
 		else
 			return new ExpressionStatement(vars.copy(), ExpressionCreator.createStandaloneExpression(null, vars));
 	}
 
-	VarDefStatement createVarDefStatement(VarsEntry vars) {
+	VarDefStatement createVarDefStatement(VarsEntry vars, int expectedVarCount) {
 		Type outerType = TypeCreator.createType();
 		if (random.nextInt(5) != 0) {
 			// simple single var
@@ -34,7 +34,7 @@ public class Creator {
 			return new VarDefStatement(vars, outerType,
 					List.of(new VarDefStatement.VarDeclaration(var, 0, value)));
 		} else {
-			int varCount = poisson(3) + 1;
+			int varCount = poisson(expectedVarCount) + 1;
 
 			List<VarDefStatement.VarDeclaration> varDeclarations = new ArrayList<>(varCount);
 
@@ -77,7 +77,7 @@ public class Creator {
 
 		return switch (random.nextInt(7)) {
 			case 0 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
-			case 1 -> this.createScope(completesNormally, context, params, vars.copy());
+			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
@@ -90,7 +90,7 @@ public class Creator {
 		if (completesNormally) {
 			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
-						new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+						new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
 						this.createMaybeScope(random.nextInt(3) != 0, context, params, vars.copy()),
 						null
 				);
@@ -100,13 +100,13 @@ public class Creator {
 		var sub = params.div(1.5);
 		if (!completesNormally || random.nextInt(3) == 0) {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
 					this.createMaybeScope(false, context, sub, vars.copy()),
 					this.createMaybeScope(completesNormally, context, sub, vars.copy())
 			);
 		} else {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars)),
+					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
 					this.createMaybeScope(true, context, sub, vars.copy()),
 					this.createMaybeScope(random.nextInt(3) != 0, context, sub, vars.copy())
 			);
@@ -118,7 +118,7 @@ public class Creator {
 			if (random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), ExpressionCreator.createExpression(PrimitiveTypes.BOOLEAN, vars))); // TODO: add different conditions
+			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)));
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
@@ -171,11 +171,11 @@ public class Creator {
 
 			return scope;
 		} else {
-			return this.createScope(completesNormally, context, params, vars.copy());
+			return this.createScope(completesNormally, false, context, params, vars.copy());
 		}
 	}
 
-	Scope createScope(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+	Scope createScope(boolean completesNormally, boolean root, Context context, Params params, VarsEntry vars) {
 		Scope scope = new Scope(vars);
 
 		int targetSize = params.targetSize() + (completesNormally ? 0 : 1);
@@ -186,6 +186,12 @@ public class Creator {
 		}
 
 		Params sub = params.div(Math.sqrt(targetSize));
+
+		if (root) {
+			scope.addStatement(
+					createVarDefStatement(vars, 4 + random.nextInt(4))
+			);
+		}
 
 		// all but the last statement have to complete normally
 		for (int i = 1; i < targetSize; i++) {
@@ -211,7 +217,6 @@ public class Creator {
 
 		// poisson distribution
 		int targetSize() {
-			Object[][] test = new Object[5][];
 			return poisson(this.size);
 		}
 	}
@@ -219,6 +224,7 @@ public class Creator {
 	public static void main(String[] args) {
 		Statement statement = (new Creator()).createScope(
 				false,
+				true,
 				new Context(),
 				new Params(20),
 				new VarsEntry()

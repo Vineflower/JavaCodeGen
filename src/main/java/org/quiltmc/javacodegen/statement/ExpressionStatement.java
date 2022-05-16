@@ -6,7 +6,7 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 public class ExpressionStatement implements SimpleSingleCompletingStatement {
 
 	private final VarsEntry vars;
-	private final Expression expression;
+	protected final Expression expression;
 
 	public ExpressionStatement(VarsEntry vars, Expression expression) {
 		this.vars = vars;

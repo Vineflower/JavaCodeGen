@@ -48,7 +48,7 @@ public class ExpressionCreator {
 	}
 
 	static Expression createStandaloneExpression(Type targetType, VarsEntry vars) {
-		if (!vars.vars.isEmpty() && random.nextInt(3) != 0) {
+		if (!vars.vars.isEmpty() && random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
@@ -59,6 +59,7 @@ public class ExpressionCreator {
 				i--;
 			}
 		}
+
 		return builder -> builder.append("System.out.println(\"Hi\")");
 	}
 
@@ -71,6 +72,46 @@ public class ExpressionCreator {
 				"println",
 				List.of(expression)
 		);
+	}
+
+	static Expression buildCondition(VarsEntry vars) {
+		if (!vars.vars.isEmpty() && random.nextInt(8) != 0) {
+			int i = vars.vars.size();
+			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
+				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
+					if (random.nextInt(i) == 0) {
+						if (varVarStateEntry.getKey().type() instanceof PrimitiveTypes primitiveType) {
+							if (primitiveType == PrimitiveTypes.BOOLEAN) {
+								return builder -> builder.append(random.nextBoolean() ? "!" : "").append(varVarStateEntry.getKey().name());
+							} else if (primitiveType == PrimitiveTypes.CHAR) {
+								return builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? " != " : " == ")
+										.append("'").append((char) (random.nextInt(26) + 'a')).append("'");
+							}
+
+							String cond = switch (random.nextInt(6)) {
+								case 0 -> "!=";
+								case 1 -> "==";
+								case 2 -> ">";
+								case 3 -> "<";
+								case 4 -> ">=";
+								case 5 -> "<=";
+								default -> throw new IllegalStateException();
+							};
+
+							return builder -> {
+								builder.append(varVarStateEntry.getKey().name()).append(" ").append(cond).append(" ");
+								createPrimitiveConstantExpression(primitiveType).javaLike(builder);
+							};
+						} else {
+							return builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? " != null" : " == null");
+						}
+					}
+				}
+				i--;
+			}
+		}
+
+		return builder -> builder.append("new Random().nextBoolean()");
 	}
 
 	static LiteralExpression createPrimitiveConstantExpression(PrimitiveTypes primitiveType) {
