@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 public final class CompilingCreator {
     private static final String QF_JAR = System.getProperty("QF_JAR", null);
     public static void main(String[] args) throws Exception {
-        int count = 10;
+        int count = 500;
 
         for (int i = 0; i < count; i++) {
             VarsEntry.resetId();
@@ -26,8 +26,8 @@ public final class CompilingCreator {
             );
 
             Paths.get(".", "fuzzed").toFile().mkdirs();
-            Paths.get(".", "compiled").toFile().mkdirs();
-            Paths.get(".", "decompiled", "recompiled").toFile().mkdirs();
+            Paths.get(".", "compiled", "recompiled").toFile().mkdirs();
+            Paths.get(".", "decompiled").toFile().mkdirs();
 
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("import java.util.Random;\n");
@@ -52,10 +52,6 @@ public final class CompilingCreator {
         }
 
         if (QF_JAR != null) {
-            for (File file : Paths.get(".", "decompiled", "recompiled").toFile().listFiles()) {
-                file.delete();
-            }
-
 
             exec = Runtime.getRuntime()
                     .exec("java -jar " + QF_JAR + " " + Paths.get(".", "compiled").toAbsolutePath() + " " + Paths.get(".", "decompiled").toAbsolutePath());
