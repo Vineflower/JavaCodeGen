@@ -24,10 +24,13 @@ public class ExpressionCreator {
 		if (type instanceof PrimitiveTypes primitiveType) {
 			createPrimitiveConstantExpression(primitiveType).javaLike(builder);
 		} else if (type instanceof ArrayType arrayType) {
+
 			builder.append("new ");
 			arrayType.base().javaLike(builder);
 			builder.append("[0]");
-			builder.append("[]".repeat(Math.max(0, arrayType.depth() - 1)));
+			if (arrayType.depth() > 1) {
+				builder.append("[]".repeat(Math.max(0, arrayType.depth() - 1)));
+			}
 		} else if (type instanceof BasicType basicType) {
 			if (type == BasicType.STRING) {
 				builder.append("\"Hi!\"");
@@ -35,7 +38,11 @@ public class ExpressionCreator {
 				builder.append("null");
 			}
 		} else if (type instanceof PrimitiveTypes.Boxed box) {
-			builder.append(box.name()).append(".valueOf(");
+			if (box.type() != PrimitiveTypes.BYTE && box.type() != PrimitiveTypes.SHORT) {
+				builder.append(box.name()).append(".valueOf(");
+			} else {
+				builder.append("((").append(box.type().name().toLowerCase(Locale.ROOT)).append(")");
+			}
 			random(random, box.type(), builder);
 			builder.append(")");
 		}
@@ -219,7 +226,7 @@ public class ExpressionCreator {
 			case BOOLEAN -> random.nextBoolean() ? "true" : "false";
 			case BYTE -> random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE + 1) + "";
 			case CHAR -> "'" + (char) (random.nextInt(26) + 'a') + "'";
-			case SHORT -> random.nextInt(Short.MIN_VALUE, Short.MAX_VALUE + 1) + "";
+			case SHORT -> "((short)" + random.nextInt(Short.MIN_VALUE, Short.MAX_VALUE + 1) + ")";
 			case INT -> (random.nextInt(5) == 0 ? random.nextInt() : random.nextInt(-150, 501)) + "";
 			case LONG -> (random.nextInt(5) == 0 ? random.nextLong() : random.nextLong(-1000, 1001)) + "L";
 			case FLOAT -> new DecimalFormat("###.##", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(200 * random.nextFloat() - 50) + "F";
@@ -229,7 +236,7 @@ public class ExpressionCreator {
 
 	static boolean isPrimitiveNumerical(PrimitiveTypes type) {
 		return switch (type) {
-			case BOOLEAN, BYTE, CHAR -> false;
+			case BOOLEAN, BYTE, CHAR, SHORT -> false;
 			default -> true;
 		};
 	}
