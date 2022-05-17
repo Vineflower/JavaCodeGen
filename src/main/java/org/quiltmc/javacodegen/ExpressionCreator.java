@@ -18,6 +18,7 @@ import java.util.Random;
 
 public class ExpressionCreator {
 	private static final Random random = new Random();
+	private static final Expression DEFAULT = builder -> builder.append("new Random().nextInt()");;
 
 	public static void random(Random random, Type type, StringBuilder builder) {
 		if (type instanceof PrimitiveTypes primitiveType) {
@@ -53,7 +54,13 @@ public class ExpressionCreator {
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
 					if (random.nextInt(i) == 0) {
-						return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
+						Expression expr = buildIncrement(varVarStateEntry.getKey());
+
+						if (random.nextInt(3) == 0 || expr == DEFAULT) {
+							return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
+						} else {
+							return expr;
+						}
 					}
 				}
 				i--;
@@ -131,15 +138,25 @@ public class ExpressionCreator {
 			}
 		}
 
-		return builder -> builder.append("new Random().nextInt()");
+		return DEFAULT;
 	}
 
 	static Expression buildIncrement(Var var) {
-		Expression value = b -> b.append("/* Unknown increment value!! */");
+		Expression value;
 		if (var.type() instanceof PrimitiveTypes primitiveType) {
+			if (!isPrimitiveNumerical(primitiveType)) {
+				return DEFAULT;
+			}
+
 			value = createPrimitiveConstantExpression(primitiveType);
 		} else if (var.type() instanceof PrimitiveTypes.Boxed boxed) {
+			if (!isPrimitiveNumerical(boxed.type())) {
+				return DEFAULT;
+			}
+
 			value = createPrimitiveConstantExpression(boxed.type());
+		} else {
+			return DEFAULT;
 		}
 
 		// TODO: %=, &=, |=, ^=, <<=, >>=, >>>= for integral types only
@@ -169,5 +186,12 @@ public class ExpressionCreator {
 			case FLOAT -> new DecimalFormat("###.##", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(200 * random.nextFloat() - 50) + "F";
 			case DOUBLE -> new DecimalFormat("###.##", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(200 * random.nextDouble() - 50) + "";
 		});
+	}
+
+	static boolean isPrimitiveNumerical(PrimitiveTypes type) {
+		return switch (type) {
+			case BOOLEAN, BYTE, CHAR -> false;
+			default -> true;
+		};
 	}
 }
