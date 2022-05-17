@@ -74,12 +74,13 @@ public class Creator {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(10)) {
+		return switch (random.nextInt(12)) {
 			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
 			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
+			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
@@ -171,6 +172,12 @@ public class Creator {
 			context.removeContinuable(whileStatement);
 			return whileStatement;
 		}
+	}
+
+	private Statement createMonitorStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		Statement st = this.createMaybeScope(true, context, params, vars.copy());
+
+		return new MonitorStatement(st);
 	}
 
 	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
