@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public final class CompilingCreator {
+    private static final String QF_JAR = System.getProperty("QF_JAR", null);
     public static void main(String[] args) throws Exception {
         int count = 10;
 
@@ -19,12 +20,13 @@ public final class CompilingCreator {
                     false,
                     true,
                     new Context(),
-                    new Creator.Params(5),
+                    new Creator.Params(8),
                     new VarsEntry()
             );
 
             Paths.get(".", "fuzzed").toFile().mkdirs();
             Paths.get(".", "compiled").toFile().mkdirs();
+            Paths.get(".", "decompiled").toFile().mkdirs();
 
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("import java.util.Random;\n");
@@ -46,6 +48,17 @@ public final class CompilingCreator {
 
         while ((s = serr.readLine()) != null) {
             System.out.println(s);
+        }
+
+        if (QF_JAR != null) {
+            exec = Runtime.getRuntime()
+                    .exec("java -jar " + QF_JAR + " " + Paths.get(".", "compiled").toAbsolutePath() + " " + Paths.get(".", "decompiled").toAbsolutePath());
+
+            serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
+
+            while ((s = serr.readLine()) != null) {
+                System.out.println(s);
+            }
         }
     }
 }

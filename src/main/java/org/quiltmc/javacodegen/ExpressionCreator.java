@@ -27,9 +27,7 @@ public class ExpressionCreator {
 			builder.append("new ");
 			arrayType.base().javaLike(builder);
 			builder.append("[0]");
-			for(int i = 1; i < arrayType.depth(); i++) {
-				builder.append("[]");
-			}
+			builder.append("[]".repeat(Math.max(0, arrayType.depth() - 1)));
 		} else if (type instanceof BasicType basicType) {
 			if (type == BasicType.STRING) {
 				builder.append("\"Hi!\"");
