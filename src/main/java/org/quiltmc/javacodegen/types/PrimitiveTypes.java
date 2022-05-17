@@ -11,6 +11,10 @@ public enum PrimitiveTypes implements Type {
 	DOUBLE("double", "Double"),
 	;
 
+	public String getPrimitiveName() {
+		return this.primitiveName;
+	}
+
 	private final String primitiveName;
 	private final Boxed boxed;
 

@@ -19,7 +19,7 @@ public record BinaryOperatorExpression(
 		this.right().javaLike(builder);
 	}
 
-	enum Operator {
+	public enum Operator {
 		ADD("+"), SUB("-"), MUL("*"), DIV("/"), MOD("/"), AND("&"), OR("|"), XOR("^"),
 		SHL("<<"), SHR(">>"), USHR(">>>");
 

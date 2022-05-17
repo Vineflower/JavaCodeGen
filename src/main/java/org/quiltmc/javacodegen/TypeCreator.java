@@ -5,6 +5,8 @@ import org.quiltmc.javacodegen.types.BasicType;
 import org.quiltmc.javacodegen.types.PrimitiveTypes;
 import org.quiltmc.javacodegen.types.Type;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 public final class TypeCreator {
@@ -35,4 +37,8 @@ public final class TypeCreator {
 			default -> throw new IllegalStateException();
 		};
 	}
+
+	public static List<? extends PrimitiveTypes.Boxed> BOXED_TYPES = Arrays.stream(PrimitiveTypes.values()).map(PrimitiveTypes::Box).toList();
+	public static List<? extends PrimitiveTypes> PRIMITIVE_TYPES = Arrays.stream(PrimitiveTypes.values()).toList();
+	public static List<? extends BasicType> BASIC_TYPES = List.of(BasicType.OBJECT, BasicType.STRING);
 }
