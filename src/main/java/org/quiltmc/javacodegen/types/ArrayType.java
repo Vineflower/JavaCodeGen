@@ -1,7 +1,7 @@
 package org.quiltmc.javacodegen.types;
 
 public record ArrayType(Type base, int depth) implements Type {
-	public ArrayType{
+	public ArrayType {
 		assert !(base instanceof ArrayType) && depth > 0;
 	}
 
@@ -18,6 +18,8 @@ public record ArrayType(Type base, int depth) implements Type {
 	@Override
 	public void javaLike(StringBuilder builder) {
 		this.base.javaLike(builder);
-		builder.append("[]");
+		for (int i = this.depth; i > 0; i--) {
+			builder.append("[]");
+		}
 	}
 }
