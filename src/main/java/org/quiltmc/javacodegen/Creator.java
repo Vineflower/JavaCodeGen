@@ -3,6 +3,7 @@ package org.quiltmc.javacodegen;
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.statement.*;
 import org.quiltmc.javacodegen.types.ArrayType;
+import org.quiltmc.javacodegen.types.BasicType;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
@@ -74,13 +75,15 @@ public class Creator {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(12)) {
+		return switch (random.nextInt(16)) {
 			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
 			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
 			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars.copy());
+			case 12, 13 -> this.createTryFinallyStatement(completesNormally, context, params, vars.copy());
+			case 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
@@ -178,6 +181,24 @@ public class Creator {
 		Statement st = this.createMaybeScope(true, context, params, vars.copy());
 
 		return new MonitorStatement(st);
+	}
+
+	private Statement createTryFinallyStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		Statement tryStat = this.createMaybeScope(true, context, params, vars.copy());
+		Statement finStat = this.createMaybeScope(true, context, params, vars.copy());
+
+		return new TryFinallyStatement(tryStat, finStat, vars.copy());
+	}
+
+	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		Statement tryStat = this.createMaybeScope(true, context, params, vars.copy());
+
+		final Var var = new Var(vars.nextName(), BasicType.EXCEPTION, FinalType.NOT_FINAL);
+		vars.create(var, true);
+
+		Statement catchStat = this.createMaybeScope(true, context, params, vars.copy());
+
+		return new TryCatchStatement(tryStat, catchStat, var, vars.copy());
 	}
 
 	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
