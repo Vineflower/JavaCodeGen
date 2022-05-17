@@ -4,6 +4,7 @@ import org.quiltmc.javacodegen.statement.Statement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -26,7 +27,7 @@ public final class CompilingCreator {
 
             Paths.get(".", "fuzzed").toFile().mkdirs();
             Paths.get(".", "compiled").toFile().mkdirs();
-            Paths.get(".", "decompiled").toFile().mkdirs();
+            Paths.get(".", "decompiled", "recompiled").toFile().mkdirs();
 
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("import java.util.Random;\n");
@@ -51,10 +52,24 @@ public final class CompilingCreator {
         }
 
         if (QF_JAR != null) {
+            for (File file : Paths.get(".", "decompiled", "recompiled").toFile().listFiles()) {
+                file.delete();
+            }
+
+
             exec = Runtime.getRuntime()
                     .exec("java -jar " + QF_JAR + " " + Paths.get(".", "compiled").toAbsolutePath() + " " + Paths.get(".", "decompiled").toAbsolutePath());
 
             serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
+
+            while ((s = serr.readLine()) != null) {
+                System.out.println(s);
+            }
+
+            exec = Runtime.getRuntime()
+                    .exec("javac -g " + Paths.get(".", "decompiled").toAbsolutePath() + "\\*.java -d " + Paths.get(".", "compiled", "recompiled").toAbsolutePath());
+
+            serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
             while ((s = serr.readLine()) != null) {
                 System.out.println(s);
