@@ -14,7 +14,11 @@ public final class VarsEntry {
 	}
 
 	public VarsEntry(VarsEntry vars) {
-		this.vars = new HashMap<>(vars.vars);
+		this.vars = new HashMap<>();
+
+		for (Map.Entry<Var, VarState> e : vars.vars.entrySet()) {
+			this.vars.put(e.getKey(), e.getValue().copy());
+		}
 	}
 
 	public void create(Var var, boolean isAssigned) {
@@ -23,6 +27,10 @@ public final class VarsEntry {
 
 	public VarsEntry copy() {
 		return new VarsEntry(this);
+	}
+
+	public static void resetId() {
+		nextId = 0;
 	}
 
 	public String nextName() {

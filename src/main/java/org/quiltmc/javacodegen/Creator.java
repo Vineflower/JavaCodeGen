@@ -74,8 +74,8 @@ public class Creator {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(9)) {
-			case 0 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
+		return switch (random.nextInt(10)) {
+			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());

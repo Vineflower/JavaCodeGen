@@ -54,7 +54,13 @@ public class ExpressionCreator {
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
 					if (random.nextInt(i) == 0) {
-						Expression expr = buildIncrement(varVarStateEntry.getKey());
+						Expression expr = buildReassign(vars);
+
+						if (expr != DEFAULT) {
+							return expr;
+						}
+
+						expr = buildIncrement(varVarStateEntry.getKey());
 
 						if (random.nextInt(3) == 0 || expr == DEFAULT) {
 							return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
@@ -125,8 +131,43 @@ public class ExpressionCreator {
 		}
 	}
 
+	static Expression buildReassign(VarsEntry vars) {
+		if (vars.vars.size() > 1 && random.nextInt(8) != 0) {
+			int i = vars.vars.size();
+			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
+				if (random.nextInt(i) == 0) {
+					int j = vars.vars.size();
+					for (Map.Entry<Var, VarState> varVarStateEntryInner : vars.vars.entrySet()) {
+						if (varVarStateEntryInner.getValue().isDefiniteAssigned()) {
+							if (random.nextInt(j) == 0 && varVarStateEntryInner.getKey() != varVarStateEntry.getKey()) {
+								if (varVarStateEntryInner.getKey().type() == varVarStateEntry.getKey().type()) {
+									String assign = (!varVarStateEntry.getValue().isDefiniteAssigned() || !canPerformMath(varVarStateEntry.getKey().type())) ? "=" : switch (random.nextInt(10)) {
+										case 0 -> "+=";
+										case 1 -> "-=";
+										case 2 -> "*=";
+										case 3 -> "/=";
+										default -> "=";
+									};
+
+									vars.vars.get(varVarStateEntry.getKey()).setDefiniteAssigned(true);
+
+									return builder -> builder.append(varVarStateEntry.getKey().name())
+											.append(" ").append(assign).append(" ").append(varVarStateEntryInner.getKey().name());
+								}
+							}
+						}
+						j--;
+					}
+				}
+				i--;
+			}
+		}
+
+		return DEFAULT;
+	}
+
 	static Expression buildIncrement(VarsEntry vars) {
-		if (!vars.vars.isEmpty() && random.nextInt(8) != 0) {
+		if (!vars.vars.isEmpty()) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
@@ -193,5 +234,15 @@ public class ExpressionCreator {
 			case BOOLEAN, BYTE, CHAR -> false;
 			default -> true;
 		};
+	}
+
+	static boolean canPerformMath(Type type) {
+		if (type instanceof PrimitiveTypes primitiveType) {
+			return isPrimitiveNumerical(primitiveType);
+		} else if (type instanceof PrimitiveTypes.Boxed boxed) {
+			return isPrimitiveNumerical(boxed.type());
+		}
+
+		return false;
 	}
 }

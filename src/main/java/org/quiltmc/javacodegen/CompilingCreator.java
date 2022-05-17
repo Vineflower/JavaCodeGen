@@ -13,6 +13,8 @@ public final class CompilingCreator {
         int count = 10;
 
         for (int i = 0; i < count; i++) {
+            VarsEntry.resetId();
+
             Statement statement = (new Creator()).createScope(
                     false,
                     true,

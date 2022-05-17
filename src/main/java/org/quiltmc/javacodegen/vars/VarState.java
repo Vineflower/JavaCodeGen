@@ -25,6 +25,10 @@ public class VarState {
 		return this.definiteAssigned;
 	}
 
+	public void setDefiniteAssigned(boolean definiteAssigned) {
+		this.definiteAssigned = definiteAssigned;
+	}
+
 	public VarState copy() {
 		return new VarState(this.definiteUnassigned, this.definiteAssigned);
 	}
