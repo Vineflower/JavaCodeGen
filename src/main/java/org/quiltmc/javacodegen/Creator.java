@@ -19,7 +19,7 @@ public class Creator {
 
 	SimpleSingleCompletingStatement createExpressionStatement(VarsEntry vars) {
 		if (random.nextInt(3) == 0)
-			return createVarDefStatement(vars, 3); // var def statements aren't considered expressions statements in the spec
+			return this.createVarDefStatement(vars, 3); // var def statements aren't considered expressions statements in the spec
 		else
 			return new ExpressionStatement(vars.copy(), ExpressionCreator.createStandaloneExpression(null, vars));
 	}
@@ -82,8 +82,7 @@ public class Creator {
 			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
 			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
 			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars.copy());
-			case 12, 13 -> this.createTryFinallyStatement(completesNormally, context, params, vars.copy());
-			case 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars.copy());
+			case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
@@ -178,27 +177,86 @@ public class Creator {
 	}
 
 	private Statement createMonitorStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		Statement st = this.createMaybeScope(true, context, params, vars.copy());
+		Statement st = this.createMaybeScope(completesNormally, context, params, vars.copy());
 
 		return new MonitorStatement(st);
 	}
 
-	private Statement createTryFinallyStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		Statement tryStat = this.createMaybeScope(true, context, params, vars.copy());
-		Statement finStat = this.createMaybeScope(true, context, params, vars.copy());
+	private List<TryCatchStatement.CatchClause> makeCatches(
+			boolean atLeastOneCompletesNormally, Context context, Params params, VarsEntry vars) {
+		int catchCount = 1;// TODO: multiple clauses, but needs dominance checking: poisson(0.7) + 1;
+		List<TryCatchStatement.CatchClause> catches = new ArrayList<>(catchCount);
 
-		return new TryFinallyStatement(tryStat, finStat, vars.copy());
+		Params sub = params.div(Math.sqrt(catchCount));
+
+		for (; catchCount > 0; catchCount--) {
+			boolean shouldComplete = false;
+			if (atLeastOneCompletesNormally) {
+				if (random.nextInt(catchCount / 2 + 1) == 0) {
+					atLeastOneCompletesNormally = random.nextBoolean();
+					shouldComplete = true;
+				}
+			}
+
+			VarsEntry entry = vars.copy();
+			final Var var = new Var(vars.nextName(), BasicType.EXCEPTION, FinalType.NOT_FINAL);
+			entry.create(var, true);
+			catches.add(new TryCatchStatement.CatchClause(var, this.createMaybeScope(shouldComplete, context, sub, entry)));
+		}
+
+		return catches;
 	}
 
 	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		Statement tryStat = this.createMaybeScope(true, context, params, vars.copy());
+		int tryCatchFinallyCase = random.nextInt(3); // 0 => only try, 1 => only finally
 
-		final Var var = new Var(vars.nextName(), BasicType.EXCEPTION, FinalType.NOT_FINAL);
-		vars.create(var, true);
+		Params sub = params.div(tryCatchFinallyCase == 2 ? 1.6 : 1.4);
 
-		Statement catchStat = this.createMaybeScope(true, context, params, vars.copy());
+		boolean tryComplete = completesNormally;
+		boolean catchComplete = completesNormally;
+		boolean finallyComplete = completesNormally;
+		switch (tryCatchFinallyCase) {
+			case 0 -> {
+				switch (random.nextInt(3)) {
+					case 0 -> tryComplete = false;
+					case 1 -> catchComplete = false;
+				}
+			}
+			case 1 -> {
+				switch (random.nextInt(3)) {
+					case 0 -> tryComplete = true;
+					case 1 -> finallyComplete = true;
+				}
+			}
+			case 2 -> {
+				if (completesNormally) {
+					switch (random.nextInt(3)) {
+						case 0 -> tryComplete = false;
+						case 1 -> catchComplete = false;
+					}
+				} else {
+					if (random.nextBoolean()) {
+						finallyComplete = true;
+					} else {
+						tryComplete = random.nextBoolean();
+						catchComplete = random.nextBoolean();
+					}
+				}
+			}
+		}
 
-		return new TryCatchStatement(tryStat, catchStat, var, vars.copy());
+		Statement tryStat = this.createMaybeScope(tryComplete, context, sub, vars.copy());
+		List<TryCatchStatement.CatchClause> catchClauses = tryCatchFinallyCase == 1
+				? List.of()
+				: this.makeCatches(catchComplete, context, sub, vars);
+		Statement finallyStat = tryCatchFinallyCase == 0
+				? null
+				: this.createMaybeScope(finallyComplete, context, sub, vars.copy());
+
+		final TryCatchStatement tryCatchStatement = new TryCatchStatement(tryStat, catchClauses, finallyStat, vars.copy());
+		assert tryCatchStatement.completesNormally() == completesNormally;
+		return tryCatchStatement;
+
 	}
 
 	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
@@ -253,7 +311,7 @@ public class Creator {
 
 		if (root) {
 			scope.addStatement(
-					createVarDefStatement(vars, 4 + random.nextInt(4))
+					this.createVarDefStatement(vars, 4 + random.nextInt(4))
 			);
 		}
 
@@ -272,7 +330,7 @@ public class Creator {
 	}
 
 
-	static record Params(double size) {
+	record Params(double size) {
 
 
 		Params div(double scale) {
@@ -290,7 +348,7 @@ public class Creator {
 				false,
 				true,
 				new Context(),
-				new Params(20),
+				new Params(5),
 				new VarsEntry()
 		);
 		System.out.println(statement);
