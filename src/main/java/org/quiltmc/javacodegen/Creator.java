@@ -11,6 +11,7 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class Creator {
@@ -75,7 +76,7 @@ public class Creator {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(16)) {
+		return switch (random.nextInt(18)) {
 			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
@@ -83,6 +84,7 @@ public class Creator {
 			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
 			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars.copy());
 			case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars.copy());
+			case 16, 17 -> this.createForEachStatement(completesNormally, context, params, vars.copy());
 			default -> throw new IllegalStateException();
 		};
 
@@ -165,6 +167,52 @@ public class Creator {
 			return forStatement;
 		} else {
 			// TODO: non completing for?
+
+			// while true without a break
+			WhileTrueStatement whileStatement = new WhileTrueStatement();
+			context.addContinuable(whileStatement);
+			// doesn't matter if it the inner completes normally or not
+			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			context.removeContinuable(whileStatement);
+			return whileStatement;
+		}
+	}
+
+	private Statement createForEachStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+		if (completesNormally) {
+			if (random.nextInt(5) == 0) {
+				// TODO add must break
+			}
+
+			List<Var> arrayTypes = vars.vars.entrySet().stream()
+					.filter(v -> v.getKey().type() instanceof ArrayType && v.getValue().isDefiniteAssigned())
+					.map(Map.Entry::getKey).toList();
+
+			if (arrayTypes.isEmpty()) {
+				return createForStatement(completesNormally, context, params, vars);
+			}
+
+			Var arrVar = arrayTypes.get(random.nextInt(arrayTypes.size()));
+
+			ArrayType type = (ArrayType) arrVar.type();
+			Type base = type.depth() == 1 ? type.base() : ArrayType.ofDepth(type.base(), type.depth() - 1);
+
+			final Var var = new Var(vars.nextName(), base, FinalType.NOT_FINAL);
+			vars.create(var, true);
+
+			ForEachStatement forEachStatement = new ForEachStatement(
+					new VarDefStatement.VarDeclaration(var, 0, null),
+					arrVar, vars);
+
+			context.addContinuable(forEachStatement);
+			context.addBreak(forEachStatement);
+			// doesn't matter if it the inner completes normally or not
+			forEachStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			context.removeContinuable(forEachStatement);
+			context.removeBreak(forEachStatement);
+			return forEachStatement;
+		} else {
+			// TODO: non completing foreach?
 
 			// while true without a break
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
