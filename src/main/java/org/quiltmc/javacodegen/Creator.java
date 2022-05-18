@@ -13,36 +13,53 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public class Creator {
-	// Not thread safe?
-	private static final Random random = new Random();
+	private final Random random;
+	private final TypeCreator typeCreator;
+	private final ExpressionCreator expressionCreator;
+
+
+	public Creator(Random random) {
+		this.random = random;
+		this.typeCreator = new TypeCreator(new Random(random.nextLong()));
+		this.expressionCreator = new ExpressionCreator(new Random(random.nextLong()));
+	}
+
+	public Creator(long seed) {
+		this(new Random(seed));
+	}
+
+	public Creator() {
+		this(new Random());
+	}
 
 	SimpleSingleCompletingStatement createExpressionStatement(VarsEntry vars) {
-		if (random.nextInt(3) == 0)
+		if (this.random.nextInt(3) == 0)
 			return this.createVarDefStatement(vars, 3); // var def statements aren't considered expressions statements in the spec
 		else
-			return new ExpressionStatement(vars.copy(), ExpressionCreator.createStandaloneExpression(null, vars));
+			return new ExpressionStatement(vars.copy(), this.expressionCreator.createStandaloneExpression(null, vars));
 	}
 
 	VarDefStatement createVarDefStatement(VarsEntry vars, int expectedVarCount) {
-		Type outerType = TypeCreator.createType();
-		if (random.nextInt(5) != 0) {
+		Type outerType = this.typeCreator.createType();
+		if (this.random.nextInt(5) != 0) {
 			// simple single var
-			Expression value = random.nextInt(3) == 0 ? null : ExpressionCreator.createExpression(outerType, vars);
+			Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(outerType, vars);
 			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, value != null);
 			return new VarDefStatement(vars, outerType,
 					List.of(new VarDefStatement.VarDeclaration(var, 0, value)));
 		} else {
-			int varCount = poisson(expectedVarCount) + 1;
+			int varCount = this.poisson(expectedVarCount) + 1;
 
 			List<VarDefStatement.VarDeclaration> varDeclarations = new ArrayList<>(varCount);
 
 			for (int i = 0; i < varCount; i++) {
-				int depth = random.nextInt(5) == 0 ? poisson(3) : 0;
+				int depth = this.random.nextInt(5) == 0 ? this.poisson(3) : 0;
 				Type innerType = ArrayType.ofDepth(outerType, depth);
-				Expression value = random.nextInt(3) == 0 ? null : ExpressionCreator.createExpression(innerType, vars);
+				Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(innerType, vars);
 				final Var var = new Var(vars.nextName(), innerType, FinalType.NOT_FINAL);
 				vars.create(var, value != null);
 				varDeclarations.add(new VarDefStatement.VarDeclaration(var, depth, value));
@@ -54,13 +71,13 @@ public class Creator {
 	}
 
 	SimpleSingleCompletingStatement createSimpleSingleCompletingStatement(VarsEntry vars) {
-		return random.nextInt(20) == 0
+		return this.random.nextInt(20) == 0
 				? new EmptyStatement()
 				: this.createExpressionStatement(vars);
 	}
 
 	SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context) {
-		return context.createBreak();
+		return context.createBreak(this.random);
 	}
 
 	SingleStatement createSingleStatement(boolean completesNormally, Context context, VarsEntry vars) {
@@ -72,11 +89,11 @@ public class Creator {
 	}
 
 	Statement createStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		if (random.nextDouble() * random.nextDouble() * params.size <= .5) {
+		if (this.random.nextDouble() * this.random.nextDouble() * params.size <= .5) {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (random.nextInt(18)) {
+		return switch (this.random.nextInt(18)) {
 			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
 			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
 			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
@@ -93,41 +110,41 @@ public class Creator {
 	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		// TODO: expressions for all of these
 		if (completesNormally) {
-			if (random.nextInt(params.size < 5 ? 2 : 3) == 0) {
+			if (this.random.nextInt(params.size < 5 ? 2 : 3) == 0) {
 				return new IfStatement(
-						new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
-						this.createMaybeScope(random.nextInt(3) != 0, context, params, vars.copy()),
+						new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
+						this.createMaybeScope(this.random.nextInt(3) != 0, context, params, vars.copy()),
 						null
 				);
 			}
 		}
 
 		var sub = params.div(1.5);
-		if (!completesNormally || random.nextInt(3) == 0) {
+		if (!completesNormally || this.random.nextInt(3) == 0) {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
+					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
 					this.createMaybeScope(false, context, sub, vars.copy()),
 					this.createMaybeScope(completesNormally, context, sub, vars.copy())
 			);
 		} else {
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)),
+					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
 					this.createMaybeScope(true, context, sub, vars.copy()),
-					this.createMaybeScope(random.nextInt(3) != 0, context, sub, vars.copy())
+					this.createMaybeScope(this.random.nextInt(3) != 0, context, sub, vars.copy())
 			);
 		}
 	}
 
 	private Statement createWhileStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (completesNormally) {
-			if (random.nextInt(5) == 0) {
+			if (this.random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(vars)));
+			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)));
 			context.addContinuable(whileStatement);
 			context.addBreak(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			context.removeBreak(whileStatement);
 			return whileStatement;
@@ -136,7 +153,7 @@ public class Creator {
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
 			context.addContinuable(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			return whileStatement;
 		}
@@ -144,24 +161,24 @@ public class Creator {
 
 	private Statement createForStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (completesNormally) {
-			if (random.nextInt(5) == 0) {
+			if (this.random.nextInt(5) == 0) {
 				// TODO add must break
 			}
-			Type outerType = TypeCreator.createNumericalType();
+			Type outerType = this.typeCreator.createNumericalType();
 			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, true);
 
 			// TODO: weirder for loops (i.e. init, cond, incr not using the same var)
 
 			ForStatement forStatement = new ForStatement(
-					new VarDefStatement.VarDeclaration(var, 0, ExpressionCreator.createExpression(outerType, vars)),
-					new ConditionStatement(vars.copy(), ExpressionCreator.buildCondition(var)),
-					ExpressionCreator.buildIncrement(var), vars);
+					new VarDefStatement.VarDeclaration(var, 0, this.expressionCreator.createExpression(outerType, vars)),
+					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(var)),
+					this.expressionCreator.buildIncrement(var), vars);
 
 			context.addContinuable(forStatement);
 			context.addBreak(forStatement);
 			// doesn't matter if it the inner completes normally or not
-			forStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			forStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(forStatement);
 			context.removeBreak(forStatement);
 			return forStatement;
@@ -172,7 +189,7 @@ public class Creator {
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
 			context.addContinuable(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			return whileStatement;
 		}
@@ -180,7 +197,7 @@ public class Creator {
 
 	private Statement createForEachStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (completesNormally) {
-			if (random.nextInt(5) == 0) {
+			if (this.random.nextInt(5) == 0) {
 				// TODO add must break
 			}
 
@@ -189,10 +206,10 @@ public class Creator {
 					.map(Map.Entry::getKey).toList();
 
 			if (arrayTypes.isEmpty()) {
-				return createForStatement(completesNormally, context, params, vars);
+				return this.createForStatement(completesNormally, context, params, vars);
 			}
 
-			Var arrVar = arrayTypes.get(random.nextInt(arrayTypes.size()));
+			Var arrVar = arrayTypes.get(this.random.nextInt(arrayTypes.size()));
 
 			ArrayType type = (ArrayType) arrVar.type();
 			Type base = type.depth() == 1 ? type.base() : ArrayType.ofDepth(type.base(), type.depth() - 1);
@@ -207,7 +224,7 @@ public class Creator {
 			context.addContinuable(forEachStatement);
 			context.addBreak(forEachStatement);
 			// doesn't matter if it the inner completes normally or not
-			forEachStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			forEachStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(forEachStatement);
 			context.removeBreak(forEachStatement);
 			return forEachStatement;
@@ -218,7 +235,7 @@ public class Creator {
 			WhileTrueStatement whileStatement = new WhileTrueStatement();
 			context.addContinuable(whileStatement);
 			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(random.nextInt(5) == 0, context, params, vars.copy()));
+			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
 			context.removeContinuable(whileStatement);
 			return whileStatement;
 		}
@@ -240,8 +257,8 @@ public class Creator {
 		for (; catchCount > 0; catchCount--) {
 			boolean shouldComplete = false;
 			if (atLeastOneCompletesNormally) {
-				if (random.nextInt(catchCount / 2 + 1) == 0) {
-					atLeastOneCompletesNormally = random.nextBoolean();
+				if (this.random.nextInt(catchCount / 2 + 1) == 0) {
+					atLeastOneCompletesNormally = this.random.nextBoolean();
 					shouldComplete = true;
 				}
 			}
@@ -256,7 +273,7 @@ public class Creator {
 	}
 
 	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		int tryCatchFinallyCase = random.nextInt(3); // 0 => only try, 1 => only finally
+		int tryCatchFinallyCase = this.random.nextInt(3); // 0 => only try, 1 => only finally
 
 		Params sub = params.div(tryCatchFinallyCase == 2 ? 1.6 : 1.4);
 
@@ -265,29 +282,29 @@ public class Creator {
 		boolean finallyComplete = completesNormally;
 		switch (tryCatchFinallyCase) {
 			case 0 -> {
-				switch (random.nextInt(3)) {
+				switch (this.random.nextInt(3)) {
 					case 0 -> tryComplete = false;
 					case 1 -> catchComplete = false;
 				}
 			}
 			case 1 -> {
-				switch (random.nextInt(3)) {
+				switch (this.random.nextInt(3)) {
 					case 0 -> tryComplete = true;
 					case 1 -> finallyComplete = true;
 				}
 			}
 			case 2 -> {
 				if (completesNormally) {
-					switch (random.nextInt(3)) {
+					switch (this.random.nextInt(3)) {
 						case 0 -> tryComplete = false;
 						case 1 -> catchComplete = false;
 					}
 				} else {
-					if (random.nextBoolean()) {
+					if (this.random.nextBoolean()) {
 						finallyComplete = true;
 					} else {
-						tryComplete = random.nextBoolean();
-						catchComplete = random.nextBoolean();
+						tryComplete = this.random.nextBoolean();
+						catchComplete = this.random.nextBoolean();
 					}
 				}
 			}
@@ -334,7 +351,7 @@ public class Creator {
 	}
 
 	Statement createMaybeScope(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		if (random.nextInt(params.size < 3 ? 2 : 4) == 0) {
+		if (this.random.nextInt(params.size < 3 ? 2 : 4) == 0) {
 			Scope scope = new Scope(vars.copy());
 
 			scope.addStatement(this.createStatement(completesNormally, context, params, vars.copy()));
@@ -348,7 +365,7 @@ public class Creator {
 	Scope createScope(boolean completesNormally, boolean root, Context context, Params params, VarsEntry vars) {
 		Scope scope = new Scope(vars);
 
-		int targetSize = params.targetSize() + (completesNormally ? 0 : 1);
+		int targetSize = params.targetSize(this.random) + (completesNormally ? 0 : 1);
 		if (targetSize == 0) {
 			if (completesNormally) {
 				return scope;
@@ -359,7 +376,7 @@ public class Creator {
 
 		if (root) {
 			scope.addStatement(
-					this.createVarDefStatement(vars, 4 + random.nextInt(4))
+					this.createVarDefStatement(vars, 4 + this.random.nextInt(4))
 			);
 		}
 
@@ -386,17 +403,17 @@ public class Creator {
 		}
 
 		// poisson distribution
-		int targetSize() {
-			return poisson(this.size);
+		int targetSize(RandomGenerator randomGenerator) {
+			return poisson(this.size, randomGenerator);
 		}
 	}
 
 	public static void main(String[] args) {
-		Statement statement = (new Creator()).createScope(
+		Statement statement = (new Creator(0L)).createScope(
 				false,
 				true,
 				new Context(),
-				new Params(5),
+				new Params(30),
 				new VarsEntry()
 		);
 		System.out.println(statement);
@@ -410,11 +427,15 @@ public class Creator {
 		System.out.println(stringBuilder);
 	}
 
-	private static int poisson(double size) {
+	private int poisson(double size) {
+		return poisson(size, this.random);
+	}
+
+	private static int poisson(double size, RandomGenerator randomGenerator) {
 		int res = 0;
 		double p = 1;
 		double l = Math.exp(-size);
-		while ((p *= random.nextDouble()) >= l) {
+		while ((p *= randomGenerator.nextDouble()) >= l) {
 			res++;
 		}
 		return res;

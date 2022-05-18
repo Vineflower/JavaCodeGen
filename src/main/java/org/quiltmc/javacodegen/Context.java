@@ -4,15 +4,13 @@ import org.quiltmc.javacodegen.statement.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.random.RandomGenerator;
 
 class Context {
-	private static final Random random = new Random();
-
 	private final List<Breakable> breakables = new ArrayList<>();
 	private final List<Continuable> continuables = new ArrayList<>();
 
-	SimpleSingleNoFallThroughStatement createBreak() {
+	SimpleSingleNoFallThroughStatement createBreak(RandomGenerator randomGenerator) {
 		int target = this.breakables.size() + this.continuables.size() + 2;
 
 		Breakable simpleBreak = null;
@@ -27,7 +25,7 @@ class Context {
 		target += (simpleBreak != null ? 1 : 0) + (simpleContinue != null ? 1 : 0);
 
 
-		int selected = random.nextInt(target);
+		int selected = randomGenerator.nextInt(target);
 
 		if (selected < this.breakables.size()) {
 			return new Break(this.breakables.get(selected), false);

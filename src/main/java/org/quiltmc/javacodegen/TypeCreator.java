@@ -8,12 +8,17 @@ import org.quiltmc.javacodegen.types.Type;
 import java.util.Random;
 
 public final class TypeCreator {
-	private static final Random random = new Random();
+	private final Random random;
 
-	static Type createType() {
+	public TypeCreator(Random random) {
+		this.random = random;
+	}
+
+
+	Type createType() {
 		return switch (random.nextInt(20)) {
 			case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> createPrimitiveType();
-			case 10 -> createPrimitiveType().Box();
+			case 10 -> createPrimitiveType(); //.Box();
 			case 11, 12 -> ArrayType.ofDepth(createType(), 1);
 			case 13, 14, 15 -> BasicType.OBJECT;
 			case 16, 17, 18, 19 -> BasicType.STRING;
@@ -21,16 +26,16 @@ public final class TypeCreator {
 		};
 	}
 
-	static Type createNumericalType() {
+	Type createNumericalType() {
 		return switch (random.nextInt(10)) {
 			case 0, 1, 2, 3, 4, 5, 6, 7, 9 -> createNumericalPrimitiveType();
-			case 8 -> createNumericalPrimitiveType().Box();
+			case 8 -> createNumericalPrimitiveType();// .Box();
 			default -> throw new IllegalStateException();
 		};
 	}
 
 
-	static PrimitiveTypes createPrimitiveType() {
+	PrimitiveTypes createPrimitiveType() {
 		return switch (random.nextInt(20)) {
 			case 0, 1, 2, 3, 4, 5 -> PrimitiveTypes.INT;
 			case 6, 7, 8, 9 -> PrimitiveTypes.LONG;
@@ -44,7 +49,7 @@ public final class TypeCreator {
 		};
 	}
 
-	static PrimitiveTypes createNumericalPrimitiveType() {
+	PrimitiveTypes createNumericalPrimitiveType() {
 		return switch (random.nextInt(20)) {
 			case 0, 1, 2, 3, 4, 5 -> PrimitiveTypes.INT;
 			case 6, 7, 8, 9 -> PrimitiveTypes.LONG;
