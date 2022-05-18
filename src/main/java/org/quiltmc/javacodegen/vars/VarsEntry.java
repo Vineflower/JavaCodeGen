@@ -34,6 +34,6 @@ public final class VarsEntry {
 	}
 
 	public String nextName() {
-		return "var" + ++nextId;
+		return "vvv" + ++nextId;
 	}
 }
