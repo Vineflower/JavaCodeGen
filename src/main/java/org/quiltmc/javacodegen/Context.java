@@ -42,7 +42,7 @@ class Context {
 		if (selected == 0) {
 			return new Return(); // todo might need an expression
 		} else if (selected == 1) {
-			return new Return(); // todo add throw
+			return new Throw();
 		} else if (selected == 2) {
 			if (simpleBreak != null) {
 				return new Break(simpleBreak, true);
