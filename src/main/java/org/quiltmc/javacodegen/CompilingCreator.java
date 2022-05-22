@@ -4,72 +4,116 @@ import org.quiltmc.javacodegen.statement.Statement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
-import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public final class CompilingCreator {
-    private static final String QF_JAR = System.getProperty("QF_JAR", null);
-    public static void main(String[] args) throws Exception {
-        int count = 500;
+	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
-        for (int i = 0; i < count; i++) {
-            VarsEntry.resetId();
+	public static void main(String[] args) throws Exception {
+		int count = 300;
 
-            Statement statement = (new Creator()).createScope(
-                    false,
-                    true,
-                    new Context(),
-                    new Creator.Params(8),
-                    new VarsEntry()
-            );
+		Path path = deleteDirs();
 
-            Paths.get(".", "fuzzed").toFile().mkdirs();
-            Paths.get(".", "compiled", "recompiled").toFile().mkdirs();
-            Paths.get(".", "decompiled").toFile().mkdirs();
+		final Path fuzzed = path.resolve("fuzzed");
+		final Path compiled = path.resolve("compiled");
+		final Path decompiled = path.resolve("decompiled");
+		final Path recompiled = path.resolve("recompiled");
 
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("import java.util.Random;\n");
+		Files.createDirectories(fuzzed);
+		Files.createDirectories(compiled);
+		Files.createDirectories(decompiled);
+		Files.createDirectories(recompiled);
 
-            stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
-            stringBuilder.append("public void test()").append(" {\n");
-            statement.javaLike(stringBuilder, "");
-            stringBuilder.append("}\n");
-            stringBuilder.append("}\n");
+		for (int i = 0; i < count; i++) {
+			VarsEntry.resetId();
 
-            Files.write(Paths.get(".", "fuzzed", "FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
-        }
+			Statement statement = (new Creator()).createScope(
+					false,
+					true,
+					new Context(),
+					new Creator.Params(10),
+					new VarsEntry()
+			);
 
-        Process exec = Runtime.getRuntime().exec("javac -g " + Paths.get(".", "fuzzed").toAbsolutePath() + "\\*.java -d " + Paths.get(".", "compiled").toAbsolutePath());
+			StringBuilder stringBuilder = new StringBuilder();
+			stringBuilder.append("import java.util.Random;\n");
 
-        BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
+			stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
+			stringBuilder.append("public void test()").append(" {\n");
+			statement.javaLike(stringBuilder, "");
+			stringBuilder.append("}\n");
+			stringBuilder.append("}\n");
 
-        String s;
+			Files.write(fuzzed.resolve("FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
+		}
 
-        while ((s = serr.readLine()) != null) {
-            System.out.println(s);
-        }
+		Process exec = Runtime.getRuntime().exec(
+				"javac -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
 
-        if (QF_JAR != null) {
+		BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
-            exec = Runtime.getRuntime()
-                    .exec("java -jar " + QF_JAR + " " + Paths.get(".", "compiled").toAbsolutePath() + " " + Paths.get(".", "decompiled").toAbsolutePath());
+		String s;
 
-            serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
+		while ((s = serr.readLine()) != null) {
+			System.out.println(s);
+		}
 
-            while ((s = serr.readLine()) != null) {
-                System.out.println(s);
-            }
+		if (QF_JAR != null) {
 
-            exec = Runtime.getRuntime()
-                    .exec("javac -g " + Paths.get(".", "decompiled").toAbsolutePath() + "\\*.java -d " + Paths.get(".", "compiled", "recompiled").toAbsolutePath());
+			exec = Runtime.getRuntime()
+					.exec("java -jar " + QF_JAR + " " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
 
-            serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
+			serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
 
-            while ((s = serr.readLine()) != null) {
-                System.out.println(s);
-            }
-        }
-    }
+			while ((s = serr.readLine()) != null) {
+				if (s.startsWith("INFO:")) {
+					System.out.println(s);
+				} else {
+					System.err.println(s);
+				}
+			}
+
+			exec = Runtime.getRuntime()
+					.exec("javac -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
+
+			serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
+
+
+			while ((s = serr.readLine()) != null) {
+				System.out.println(s);
+			}
+		}
+	}
+
+	private static Path deleteDirs() throws IOException {
+		final Path path = Paths.get(".").resolve("output");
+		Files.createDirectories(path);
+		removeSubFolder(path, "fuzzed");
+		removeSubFolder(path, "compiled");
+		removeSubFolder(path, "decompiled");
+		removeSubFolder(path, "recompiled");
+		return path;
+	}
+
+	private static void removeSubFolder(Path path, String fuzzed) throws IOException {
+		final Path subFolder = path.resolve(fuzzed);
+		if(!Files.exists(subFolder)){
+			return;
+		}
+		if(!Files.isDirectory(subFolder)){
+			Files.delete(subFolder);
+			return;
+		}
+		Files.list(subFolder).filter(Files::isRegularFile).forEach(path1 -> {
+			try {
+				Files.delete(path1);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		});
+	}
 }
