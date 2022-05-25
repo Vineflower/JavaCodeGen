@@ -3,10 +3,11 @@ package org.quiltmc.javacodegen.statement;
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
+// TODO: what is this?
 public class ConditionStatement extends ExpressionStatement {
-    public ConditionStatement(VarsEntry vars, Expression expression) {
+	public ConditionStatement(VarsEntry vars, Expression expression) {
         super(vars, expression);
-    }
+	}
 
     @Override
     public void javaLike(StringBuilder builder, String indentation) {

@@ -22,4 +22,8 @@ public record ArrayType(Type base, int depth) implements Type {
 			builder.append("[]");
 		}
 	}
+
+	public Type componentType() {
+		return ofDepth(this.base, this.depth - 1);
+	}
 }

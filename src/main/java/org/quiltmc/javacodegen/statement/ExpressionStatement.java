@@ -12,10 +12,11 @@ public class ExpressionStatement implements SimpleSingleCompletingStatement {
 		this.vars = vars;
 		this.expression = expression;
 		assert expression != null;
+		VarsEntry.freeze(vars);
 	}
 
 	@Override
-	public VarsEntry varsFor() {
+	public VarsEntry varsEntry() {
 		return this.vars;
 	}
 

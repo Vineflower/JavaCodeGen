@@ -7,20 +7,13 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.List;
 
-public class VarDefStatement implements SimpleSingleCompletingStatement, LabelImpossible {
-	private VarsEntry vars;
-	private final Type outerVarType;
-	private final List<? extends VarDeclaration> varDeclarations;
-
-	public VarDefStatement(VarsEntry vars, Type outerVarType, List<? extends VarDeclaration> varDeclarations) {
-		this.vars = vars;
-		this.outerVarType = outerVarType;
-		this.varDeclarations = varDeclarations;
-	}
-
-	@Override
-	public VarsEntry varsFor() {
-		return vars;
+public record VarDefStatement(
+	Type outerVarType,
+	List<? extends VarDeclaration> varDeclarations,
+	VarsEntry varsEntry
+) implements SimpleSingleCompletingStatement, LabelImpossible {
+	public VarDefStatement {
+		VarsEntry.freeze(varsEntry);
 	}
 
 	@Override
@@ -29,7 +22,7 @@ public class VarDefStatement implements SimpleSingleCompletingStatement, LabelIm
 		this.outerVarType.javaLike(builder);
 		builder.append(" ");
 		boolean first = true;
-		for (VarDeclaration varDeclaration : varDeclarations) {
+		for (VarDeclaration varDeclaration : this.varDeclarations) {
 			if (!first) {
 				builder.append(", ");
 			}
@@ -41,19 +34,17 @@ public class VarDefStatement implements SimpleSingleCompletingStatement, LabelIm
 	}
 
 	public record VarDeclaration(
-			Var var,
-			int arrayDepth,
-			Expression value // nullable
+		Var var,
+		int arrayDepth,
+		Expression value // nullable
 	) {
 
 		public void javaLike(StringBuilder builder) {
-			var.javaLike(builder);
-			for(int i = 0; i < arrayDepth; i++) {
-				builder.append("[]");
-			}
-			if (value != null) {
+			this.var.javaLike(builder);
+			builder.append("[]".repeat(this.arrayDepth));
+			if (this.value != null) {
 				builder.append(" = ");
-				value.javaLike(builder);
+				this.value.javaLike(builder);
 			}
 		}
 	}

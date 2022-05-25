@@ -1,22 +1,32 @@
 package org.quiltmc.javacodegen.statement;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Continuable extends Breakable {
-	private final List<Continue> continues = new ArrayList<>();
-
-	void addContinue(Continue c) {
-		this.continues.add(c);
+public interface Continuable extends Breakable {
+	@Override
+	@Deprecated
+	default void initMarks(List<? extends Statement> breaks) {
+		Breakable.super.initMarks(breaks);
 	}
 
-	protected boolean canContinue() {
-		return !this.continues.isEmpty();
+	default void initMarks(List<? extends Statement> breaks, List<? extends Statement> continues) {
+		Breakable.super.initMarks(breaks);
+		continues.forEach(this::initMark);
+	}
+
+	private void initMark(Statement statement) {
+		WrappedBreakOutStatement.<Continue>baseAs(statement).setTarget(this);
+	}
+
+	List<? extends Statement> continues();
+
+	default boolean hasContinue() {
+		return !this.continues().isEmpty();
 	}
 
 
 	@Override
-	boolean needsLabel() {
-		return super.needsLabel() || !this.continues.stream().allMatch(Continue::simple);
+	default boolean needsLabel() {
+		return Breakable.super.needsLabel() || !this.continues().stream().allMatch(Continue::simpleContinue);
 	}
 }

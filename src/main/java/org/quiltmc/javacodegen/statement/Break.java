@@ -2,21 +2,26 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public record Break(Breakable target, boolean simple) implements SimpleSingleNoFallThroughStatement {
-	public Break {
-		target.addBreak(this);
+public final class Break implements SimpleSingleNoFallThroughStatement {
+	private Breakable target;
+	private boolean simple;
+	private final VarsEntry breakOutVars;
+
+	public Break(
+		boolean simple,
+		VarsEntry breakOutVars
+	) {
+		this.simple = simple;
+		this.breakOutVars = breakOutVars;
+
+		VarsEntry.freeze(breakOutVars);
 	}
 
 	@Override
 	public String toString() {
 		return "Break[" +
-				"target=" + this.target.getId() + ", " +
-				"simple=" + this.simple + "]";
-	}
-
-	@Override
-	public VarsEntry varsFor() {
-		return this.target.varsFor();
+			   "target=" + this.target.getId() + ", " +
+			   "simple=" + this.simple + "]";
 	}
 
 	@Override
@@ -26,5 +31,31 @@ public record Break(Breakable target, boolean simple) implements SimpleSingleNoF
 		} else {
 			builder.append(indentation).append("break label_").append(this.target.getId()).append(";\n");
 		}
+	}
+
+	public Breakable target() {
+		return this.target;
+	}
+
+	public static boolean simpleBreak(Statement statement) {
+		if (statement instanceof Break breakStatement) {
+			return breakStatement.simple;
+		} else if (statement instanceof WrappedBreakOutStatement wrapped) {
+			return simpleBreak(wrapped.statement());
+		} else {
+			throw new IllegalArgumentException("Not a break statement: " + statement);
+		}
+	}
+
+	public VarsEntry breakOutVars() {
+		return this.breakOutVars;
+	}
+
+	void setTarget(Breakable breakable) {
+		this.target = breakable;
+	}
+
+	public void setSimple(boolean b) {
+		this.simple = b;
 	}
 }

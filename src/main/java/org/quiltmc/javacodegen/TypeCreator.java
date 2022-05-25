@@ -16,27 +16,31 @@ public final class TypeCreator {
 
 
 	Type createType() {
-		return switch (random.nextInt(20)) {
-			case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> createPrimitiveType();
-			case 10 -> createPrimitiveType(); //.Box();
-			case 11, 12 -> ArrayType.ofDepth(createType(), 1);
+		return switch (this.random.nextInt(20)) {
+			case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> this.createPrimitiveType();
+			case 10 -> this.createPrimitiveType(); //.Box();
+			case 11, 12 -> this.createArrayType();
 			case 13, 14, 15 -> BasicType.OBJECT;
 			case 16, 17, 18, 19 -> BasicType.STRING;
 			default -> throw new IllegalStateException();
 		};
 	}
 
+	public ArrayType createArrayType() {
+		return (ArrayType) ArrayType.ofDepth(this.createType(), Math.max(1, this.random.nextInt(4)));
+	}
+
 	Type createNumericalType() {
-		return switch (random.nextInt(10)) {
-			case 0, 1, 2, 3, 4, 5, 6, 7, 9 -> createNumericalPrimitiveType();
-			case 8 -> createNumericalPrimitiveType();// .Box();
+		return switch (this.random.nextInt(10)) {
+			case 0, 1, 2, 3, 4, 5, 6, 7, 9 -> this.createNumericalPrimitiveType();
+			case 8 -> this.createNumericalPrimitiveType();// .Box();
 			default -> throw new IllegalStateException();
 		};
 	}
 
 
 	PrimitiveTypes createPrimitiveType() {
-		return switch (random.nextInt(20)) {
+		return switch (this.random.nextInt(20)) {
 			case 0, 1, 2, 3, 4, 5 -> PrimitiveTypes.INT;
 			case 6, 7, 8, 9 -> PrimitiveTypes.LONG;
 			case 10, 11, 12, 13 -> PrimitiveTypes.FLOAT;
@@ -50,7 +54,7 @@ public final class TypeCreator {
 	}
 
 	PrimitiveTypes createNumericalPrimitiveType() {
-		return switch (random.nextInt(20)) {
+		return switch (this.random.nextInt(20)) {
 			case 0, 1, 2, 3, 4, 5 -> PrimitiveTypes.INT;
 			case 6, 7, 8, 9 -> PrimitiveTypes.LONG;
 			case 10, 11, 12, 13 -> PrimitiveTypes.FLOAT;

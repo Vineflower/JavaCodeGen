@@ -1,6 +1,9 @@
 package org.quiltmc.javacodegen;
 
+import org.quiltmc.javacodegen.statement.Return;
 import org.quiltmc.javacodegen.statement.Statement;
+import org.quiltmc.javacodegen.statement.Throw;
+import org.quiltmc.javacodegen.statement.WrappedBreakOutStatement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
@@ -14,7 +17,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 300;
+		int count = 50;
 
 		Path path = deleteDirs();
 
@@ -28,27 +31,49 @@ public final class CompilingCreator {
 		Files.createDirectories(decompiled);
 		Files.createDirectories(recompiled);
 
-		for (int i = 0; i < count; i++) {
-			VarsEntry.resetId();
+		int failedToGenerate = 0;
 
-			Statement statement = (new Creator()).createScope(
+		for (int i = 0; i < count; i++) {
+			try {
+				VarsEntry.resetId();
+
+				final Context context = new Context();
+				Statement statement = (new Creator()).createScope(
 					false,
 					true,
-					new Context(),
+					context,
 					new Creator.Params(10),
 					new VarsEntry()
-			);
+				);
 
-			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.append("import java.util.Random;\n");
+				assert context.canBeSingle(true);
+				assert context.continueTargets == 0;
+				assert context.breakTargets == 0;
+				assert statement.breakOuts().stream().allMatch(s -> {
+					var base = WrappedBreakOutStatement.base(s);
+					return base instanceof Return || base instanceof Throw;
+				});
 
-			stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
-			stringBuilder.append("public void test()").append(" {\n");
-			statement.javaLike(stringBuilder, "");
-			stringBuilder.append("}\n");
-			stringBuilder.append("}\n");
+				StringBuilder stringBuilder = new StringBuilder();
+				stringBuilder.append("import java.util.Random;\n");
 
-			Files.write(fuzzed.resolve("FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
+				stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
+				stringBuilder.append("public void test()").append(" {\n");
+				statement.javaLike(stringBuilder, "");
+				stringBuilder.append("}\n");
+				stringBuilder.append("}\n");
+
+				Files.write(fuzzed.resolve("FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
+			} catch (Throwable t) {
+				failedToGenerate ++;
+				System.out.println("Failed to create class " + i);
+				t.printStackTrace();
+			}
+		}
+
+		if (failedToGenerate > 0) {
+			System.out.println("Failed to generate " + failedToGenerate + " classes");
+			System.exit(1);
 		}
 
 		Process exec = Runtime.getRuntime().exec(

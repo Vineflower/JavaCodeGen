@@ -58,7 +58,7 @@ public class ExpressionCreator {
 	}
 
 	Expression createStandaloneExpression(Type targetType, VarsEntry vars) {
-		if (!vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
+		if (vars != null && !vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
@@ -97,7 +97,7 @@ public class ExpressionCreator {
 	}
 
 	Expression buildCondition(VarsEntry vars) {
-		if (!vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
+		if (vars != null && !vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
@@ -141,6 +141,9 @@ public class ExpressionCreator {
 	}
 
 	Expression buildReassign(VarsEntry vars) {
+		if(vars.isFrozen()) {
+			throw new IllegalArgumentException("Cannot reassign frozen vars");
+		}
 		if (vars.vars.size() > 1 && this.random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
@@ -158,7 +161,7 @@ public class ExpressionCreator {
 										default -> "=";
 									};
 
-									vars.vars.get(varVarStateEntry.getKey()).setDefiniteAssigned(true);
+									vars.assign(varVarStateEntry.getKey());
 
 									return builder -> builder.append(varVarStateEntry.getKey().name())
 											.append(" ").append(assign).append(" ").append(varVarStateEntryInner.getKey().name());

@@ -2,13 +2,11 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public class MonitorStatement implements Statement {
-	private final Statement body;
+import java.util.List;
 
-	public MonitorStatement(Statement body) {
-
-		this.body = body;
-	}
+public record MonitorStatement(
+		Scope body
+) implements Statement {
 
 	@Override
 	public boolean completesNormally() {
@@ -16,13 +14,18 @@ public class MonitorStatement implements Statement {
 	}
 
 	@Override
-	public VarsEntry varsFor() {
-		return this.body.varsFor();
+	public VarsEntry varsEntry() {
+		return this.body.varsEntry();
+	}
+
+	@Override
+	public List<? extends SimpleSingleNoFallThroughStatement> breakOuts() {
+		return this.body.breakOuts();
 	}
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation).append("synchronized (this) \n");
-		this.body.javaLike(builder, indentation + (this.body instanceof Scope ? "" : "\t"));
+		this.body.javaLike(builder, indentation);
 	}
 }

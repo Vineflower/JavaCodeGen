@@ -3,56 +3,59 @@ package org.quiltmc.javacodegen.statement;
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public class ForStatement extends Continuable {
-    private final VarDefStatement.VarDeclaration varDec;
-    private final Statement condition;
-    private final Expression incr;
-    private final VarsEntry vars;
-    private Statement block;
+import java.util.List;
 
-    public ForStatement(VarDefStatement.VarDeclaration varDec, Statement condition, Expression incr, VarsEntry vars) {
-        this.varDec = varDec;
-        this.condition = condition;
-        this.incr = incr;
-        this.vars = vars;
-    }
+/**
+ * @param varDec should be a statement expression list
+ * @param incr   should be a statement expression list
+ */
+public record ForStatement(
+	VarDefStatement.VarDeclaration varDec,
+	Expression condition,
+	Expression incr,
+	Statement block,
+	List<? extends Statement> breaks,
+	List<? extends Statement> continues,
+	VarsEntry varsEntry,
+	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
+) implements Continuable {
+	public ForStatement {
+		VarsEntry.freeze(varsEntry);
+		this.initMarks(breaks, continues);
+	}
 
-    public void setBlock(Statement block) {
-        this.block = block;
-    }
+	@Override
+	public boolean completesNormally() {
+		return this.condition != null || this.hasBreak(); // TODO: check if condition is "true"
+	}
 
-    @Override
-    public boolean completesNormally() {
-        return true;
-    }
 
-    @Override
-    public VarsEntry varsFor() {
-        return this.vars;
-    }
+	@Override
+	public void javaLike(StringBuilder builder, String indentation) {
+		// check if we need a label
+		this.addLabel(builder, indentation);
 
-    @Override
-    public void javaLike(StringBuilder builder, String indentation) {
-        // check if we need a label
-        this.addLabel(builder, indentation);
+		builder.append(indentation).append("for (");
+		if (this.varDec != null) {
+			this.varDec.var().type().javaLike(builder);
+			builder.append(" ");
+			this.varDec.javaLike(builder);
+		}
+		builder.append("; ");
+		if (this.condition != null) {
+			condition.javaLike(builder);
+		}
+		builder.append("; ");
+		if (this.incr != null) {
+			this.incr.javaLike(builder);
+		}
+		builder.append(") \n");
+		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
+	}
 
-        StringBuilder cond = new StringBuilder();
-        this.condition.javaLike(cond, "");
 
-        StringBuilder init = new StringBuilder();
-        this.varDec.var().type().javaLike(init);
-        init.append(" ");
-        this.varDec.javaLike(init);
-
-        StringBuilder incr = new StringBuilder();
-        this.incr.javaLike(incr);
-
-        builder.append(indentation).append("for (").append(init).append("; ").append(cond.toString().trim()).append("; ").append(incr).append(") \n");
-        this.block.javaLike(builder,indentation + (this.block instanceof Scope? "" : "\t"));
-    }
-
-    @Override
-    public String toString() {
-        return "ForStatement[TODO impl]";
-    }
+	@Override
+	public String toString() {
+		return "ForStatement[TODO impl]";
+	}
 }

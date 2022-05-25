@@ -2,26 +2,26 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public final class WhileTrueStatement extends Continuable {
-	private Statement block;
+import java.util.List;
 
-	public WhileTrueStatement(
-			/* TODO: const expression */
-	) {
-	}
 
-	public void setBlock(Statement block) {
-		this.block = block;
-	}
+public record WhileTrueStatement(
+	/* TODO: const expression */
+	Statement block,
+	List<? extends Statement> breaks,
+	List<? extends Statement> continues,
+	VarsEntry varsEntry,
+	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 
-	@Override
-	public VarsEntry varsFor() {
-		return this.block.varsFor();
+) implements Continuable {
+	public WhileTrueStatement {
+		VarsEntry.freeze(varsEntry);
+		this.initMarks(breaks, continues);
 	}
 
 	@Override
 	public boolean completesNormally() {
-		return this.canBreak();
+		return this.hasBreak();
 	}
 
 	@Override
@@ -29,13 +29,13 @@ public final class WhileTrueStatement extends Continuable {
 		this.addLabel(builder, indentation);
 
 		builder.append(indentation).append("while (true) \n");
-		this.block.javaLike(builder, indentation + (this.block instanceof Scope?"":"\t"));
+		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
 	}
 
 	@Override
 	public String toString() {
 		return "WhileStatement@" + System.identityHashCode(this) + "[" +
-				"block=" + this.block + ']';
+			   "block=" + this.block + ']';
 	}
 
 }

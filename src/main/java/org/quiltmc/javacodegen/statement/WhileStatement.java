@@ -2,29 +2,26 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public final class WhileStatement extends Continuable {
-	private final Statement condition;
-	private Statement block;
+import java.util.List;
 
-	public WhileStatement(
-			Statement condition
-	) {
-		this.condition = condition;
-	}
-
-	public void setBlock(Statement block) {
-		this.block = block;
+public record WhileStatement(
+	Statement condition,
+	Statement block,
+	List<? extends Statement> breaks,
+	List<? extends Statement> continues,
+	VarsEntry varsEntry,
+	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
+) implements Continuable{
+	public WhileStatement {
+		VarsEntry.freeze(varsEntry);
+		this.initMarks(breaks, continues);
 	}
 
 	@Override
 	public boolean completesNormally() {
-		return true;
+		return true;// TODO merge with "WhileTrue"
 	}
 
-	@Override
-	public VarsEntry varsFor() {
-		return this.condition.varsFor();
-	}
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
@@ -35,14 +32,15 @@ public final class WhileStatement extends Continuable {
 		this.condition.javaLike(cond, "");
 
 		builder.append(indentation).append("while (").append(cond.toString().trim()).append(") \n");
-		this.block.javaLike(builder,indentation + (this.block instanceof Scope?"":"\t"));
+		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
 	}
+
 
 	@Override
 	public String toString() {
 		return "WhileStatement@" + System.identityHashCode(this) + "[" +
-				"cond=" + this.condition + ']' +
-				"block=" + this.block + ']';
+			   "cond=" + this.condition + ']' +
+			   "block=" + this.block + ']';
 	}
 
 }

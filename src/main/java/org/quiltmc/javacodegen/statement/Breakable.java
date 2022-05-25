@@ -1,28 +1,31 @@
 package org.quiltmc.javacodegen.statement;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Breakable implements Statement {
-	private final List<Break> breaks = new ArrayList<>();
-
-	void addBreak(Break b) {
-		this.breaks.add(b);
+public interface Breakable extends Statement {
+	default void initMarks(List<? extends Statement> breaks) {
+		breaks.forEach(this::initMark);
 	}
 
-	protected boolean canBreak() {
-		return !this.breaks.isEmpty();
+	private void initMark(Statement statement) {
+		WrappedBreakOutStatement.<Break>baseAs(statement).setTarget(this);
+	}
+	List<? extends Statement> breaks();
+
+
+	default boolean hasBreak() {
+		return !this.breaks().isEmpty();
 	}
 
-	int getId() {
+	default int getId() {
 		return System.identityHashCode(this);
 	}
 
-	boolean needsLabel() {
-		return !this.breaks.stream().allMatch(Break::simple);
+	default boolean needsLabel() {
+		return !this.breaks().stream().allMatch(Break::simpleBreak);
 	}
 
-	void addLabel(StringBuilder builder, String indentation) {
+	default void addLabel(StringBuilder builder, String indentation) {
 		if (this.needsLabel()) {
 			builder.append(indentation).append("label_").append(System.identityHashCode(this)).append(":\n");
 		}

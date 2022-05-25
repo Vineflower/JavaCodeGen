@@ -2,12 +2,9 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public class EmptyStatement implements SimpleSingleCompletingStatement {
-	// could be a singleton I think
-
-	@Override
-	public VarsEntry varsFor() {
-		return new VarsEntry();
+public record EmptyStatement(VarsEntry varsEntry) implements SimpleSingleCompletingStatement {
+	public EmptyStatement {
+		VarsEntry.freeze(varsEntry);
 	}
 
 	@Override

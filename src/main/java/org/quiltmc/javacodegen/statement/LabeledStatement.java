@@ -2,40 +2,45 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public final class LabeledStatement extends Breakable {
-	private Statement inner;
+import java.util.List;
 
-	public void setInner(Statement inner) {
-		this.inner = inner;
+public record LabeledStatement(
+	Statement inner,
+	List<? extends Statement> breaks,
+	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
+) implements Breakable {
+	public LabeledStatement{
+		this.initMarks(breaks);
+	}
+	@Override
+	public VarsEntry varsEntry() {
+		return this.inner.varsEntry();
 	}
 
 	@Override
 	public boolean completesNormally() {
-		return this.inner.completesNormally() || super.canBreak();
+		return Breakable.super.hasBreak() || this.inner.completesNormally();
 	}
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		this.addLabel(builder, indentation);
-		this.inner.javaLike(builder,indentation);
+		this.inner.javaLike(builder, indentation);
 	}
 
+
 	@Override
-	boolean needsLabel() {
+	public boolean needsLabel() {
 		// always show label
 		return true;
 	}
 
-	@Override
-	public VarsEntry varsFor() {
-		return this.inner.varsFor();
-	}
 
 	@Override
 	public String toString() {
 		return "LabeledStatement@" + System.identityHashCode(this) + "[" +
-				"inner=" + this.inner +
-				']';
+			   "inner=" + this.inner +
+			   ']';
 	}
 
 

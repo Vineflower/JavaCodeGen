@@ -1,40 +1,49 @@
 package org.quiltmc.javacodegen.vars;
 
-public class VarState {
-	private boolean definiteUnassigned;
-	private boolean definiteAssigned;
+public enum VarState {
+	MIXED(false , false),
+	ASSIGNED(false, true),
+	UNASSIGNED(true, false),
+	NEVER(true, true)
+	;
 
-	public VarState(boolean definiteUnassigned, boolean definiteAssigned) {
+
+	private final boolean definiteUnassigned;
+	private final boolean definiteAssigned;
+
+	VarState(
+		boolean definiteUnassigned,
+		boolean definiteAssigned
+	) {
+
 		this.definiteUnassigned = definiteUnassigned;
 		this.definiteAssigned = definiteAssigned;
 	}
 
-	public VarState() {
-		this(false, false);
+	private static final VarState[] values = values();
+
+	public static VarState def(boolean isAssigned) {
+		return isAssigned? ASSIGNED : UNASSIGNED;
 	}
 
-	public VarState(boolean isAssigned) {
-		this(!isAssigned, isAssigned);
-	}
-
-	public boolean isDefiniteUnassigned() {
-		return this.definiteUnassigned;
+	public VarState mergeWith(VarState other) {
+		return values[this.ordinal() & other.ordinal()];
 	}
 
 	public boolean isDefiniteAssigned() {
 		return this.definiteAssigned;
 	}
 
-	public void setDefiniteAssigned(boolean definiteAssigned) {
-		this.definiteAssigned = definiteAssigned;
+	public boolean isDefiniteUnassigned() {
+		return this.definiteUnassigned;
 	}
 
-	public VarState copy() {
-		return new VarState(this.definiteUnassigned, this.definiteAssigned);
-	}
-
-	public void mergeWith(VarState other) {
-		this.definiteUnassigned = this.definiteUnassigned && other.definiteUnassigned;
-		this.definiteAssigned = this.definiteAssigned && other.definiteAssigned;
+	public VarState applyFinally(VarState preFinally, VarState finallyVar) {
+		boolean definiteAssigned = this.definiteAssigned || finallyVar.definiteAssigned;
+		// this is technically wrong, but as definiteUnassigned ony matters for final vars
+		// then if a final var isn't definite unassigned before finally, then there
+		// are no assignments to it in the 'finally' block.
+		boolean definiteUnassigned = this.definiteUnassigned && (finallyVar.definiteUnassigned || !preFinally.definiteUnassigned);
+		return values[(definiteAssigned? 1 : 0) | (definiteUnassigned? 2 : 0)];
 	}
 }

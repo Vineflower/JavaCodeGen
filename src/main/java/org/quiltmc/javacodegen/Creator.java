@@ -9,11 +9,9 @@ import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.random.RandomGenerator;
+import java.util.stream.Stream;
 
 public class Creator {
 	private final Random random;
@@ -36,21 +34,27 @@ public class Creator {
 	}
 
 	SimpleSingleCompletingStatement createExpressionStatement(VarsEntry vars) {
-		if (this.random.nextInt(3) == 0)
-			return this.createVarDefStatement(vars, 3); // var def statements aren't considered expressions statements in the spec
-		else
-			return new ExpressionStatement(vars.copy(), this.expressionCreator.createStandaloneExpression(null, vars));
+		if (this.random.nextInt(3) == 0) {
+			return this.createVarDefStatement(vars, 3); // postFinallyVars def statements aren't considered expressions statements in the spec
+		} else {
+			VarsEntry postVars = new VarsEntry(vars);
+			return new ExpressionStatement(postVars, this.expressionCreator.createStandaloneExpression(null, postVars));
+		}
 	}
 
-	VarDefStatement createVarDefStatement(VarsEntry vars, int expectedVarCount) {
-		Type outerType = this.typeCreator.createType();
+	VarDefStatement createVarDefStatement(VarsEntry inVars, int expectedVarCount) {
+		var outerType = this.typeCreator.createType();
+		var vars = new VarsEntry(inVars);
 		if (this.random.nextInt(5) != 0) {
-			// simple single var
+			// simple single postFinallyVars
 			Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(outerType, vars);
 			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, value != null);
-			return new VarDefStatement(vars, outerType,
-					List.of(new VarDefStatement.VarDeclaration(var, 0, value)));
+			vars.freeze();
+			return new VarDefStatement(
+				outerType,
+				List.of(new VarDefStatement.VarDeclaration(var, 0, value)),
+				vars);
 		} else {
 			int varCount = this.poisson(expectedVarCount) + 1;
 
@@ -65,190 +69,377 @@ public class Creator {
 				varDeclarations.add(new VarDefStatement.VarDeclaration(var, depth, value));
 			}
 
-			return new VarDefStatement(vars, outerType, varDeclarations);
+			vars.freeze();
+
+			return new VarDefStatement(outerType, varDeclarations, vars);
 		}
 
 	}
 
 	SimpleSingleCompletingStatement createSimpleSingleCompletingStatement(VarsEntry vars) {
 		return this.random.nextInt(20) == 0
-				? new EmptyStatement()
-				: this.createExpressionStatement(vars);
+			? new EmptyStatement(vars)
+			: this.createExpressionStatement(vars);
 	}
 
-	SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context) {
-		return context.createBreak(this.random);
+	SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context, VarsEntry vars) {
+		return context.createBreak(this.random, vars);
 	}
 
 	SingleStatement createSingleStatement(boolean completesNormally, Context context, VarsEntry vars) {
 		if (completesNormally) {
 			return this.createSimpleSingleCompletingStatement(vars);
 		} else {
-			return this.createSimpleSingleNoFallThroughStatement(context);
+			return this.createSimpleSingleNoFallThroughStatement(context, vars);
 		}
 	}
 
 	Statement createStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		if (this.random.nextDouble() * this.random.nextDouble() * params.size <= .5) {
+		if (context.canBeSingle(completesNormally) && this.random.nextDouble() * this.random.nextDouble() * params.size <= .5) {
 			return this.createSingleStatement(completesNormally, context, vars);
 		}
 
-		return switch (this.random.nextInt(18)) {
-			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars.copy());
-			case 1 -> this.createScope(completesNormally, false, context, params, vars.copy());
-			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars.copy());
-			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars.copy());
-			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars.copy());
-			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars.copy());
-			case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars.copy());
-			case 16, 17 -> this.createForEachStatement(completesNormally, context, params, vars.copy());
+		int neededBreaks = context.neededBreaks;
+		Statement stat = switch (this.random.nextInt(18)) {
+			case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars);
+			case 1 -> this.createScope(completesNormally, false, context, params, vars);
+			case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars);
+			case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars);
+			case 7, 8 -> this.createForStatement(completesNormally, context, params, vars);
+			case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars);
+			case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars);
+			case 16, 17 -> completesNormally // foreach always completes normally
+				? this.createForEachStatement(context, params, vars)
+				: this.createForStatement(false, context, params, vars);
+
 			default -> throw new IllegalStateException();
 		};
 
+		assert neededBreaks == 0 || stat.breakOuts().stream().filter(s -> WrappedBreakOutStatement.base(s) instanceof Break && !WrappedBreakOutStatement.isDead(s)).count() >= neededBreaks;
+		assert stat.completesNormally() == completesNormally;
+		assert context.breakTargets > 0 || stat.breakOuts().stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
+
+		return stat;
 	}
 
-	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
+		// fixme: conditions can introduce new variables
+		var condition = new ConditionStatement(inVars, this.expressionCreator.buildCondition(inVars));
+
+
 		// TODO: expressions for all of these
-		if (completesNormally) {
-			if (this.random.nextInt(params.size < 5 ? 2 : 3) == 0) {
-				return new IfStatement(
-						new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
-						this.createMaybeScope(this.random.nextInt(3) != 0, context, params, vars.copy()),
-						null
-				);
-			}
+		if (completesNormally && this.random.nextInt(params.size < 5 ? 2 : 3) == 0) {
+
+			var ifBlock = this.createMaybeScope(this.random.nextInt(3) != 0, context, params, inVars);
+
+			var outVars = ifBlock.completesNormally() ? VarsEntry.merge(inVars, ifBlock.varsEntry()) : inVars;
+
+			return new IfStatement(
+				condition,
+				ifBlock,
+				null,
+				outVars,
+				ifBlock.breakOuts()
+			);
 		}
 
 		var sub = params.div(1.5);
 		if (!completesNormally || this.random.nextInt(3) == 0) {
+			long cache = context.partial(this.random, 2);
+
+			var ifBlock = this.createMaybeScope(false, context, sub, inVars);
+
+			context.restore(cache);
+			context.applyBreakOuts(ifBlock.breakOuts());
+
+			var elseBlock = this.createMaybeScope(completesNormally, context, sub, inVars);
+
+			var breakOuts = mergeBreakOuts(ifBlock.breakOuts(), elseBlock.breakOuts());
+
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
-					this.createMaybeScope(false, context, sub, vars.copy()),
-					this.createMaybeScope(completesNormally, context, sub, vars.copy())
+				condition,
+				ifBlock,
+				elseBlock,
+				completesNormally ? elseBlock.varsEntry() : VarsEntry.never(),
+				breakOuts
 			);
 		} else {
+			long cache = context.partial(this.random, 2);
+
+			var ifBlock = this.createMaybeScope(true, context, sub, inVars);
+
+			context.restore(cache);
+			context.applyBreakOuts(ifBlock.breakOuts());
+
+			var elseBlock =
+				this.createMaybeScope(this.random.nextInt(3) != 0, context, sub, inVars);
+
+			var breakOuts = mergeBreakOuts(ifBlock.breakOuts(), elseBlock.breakOuts());
+
 			return new IfStatement(
-					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)),
-					this.createMaybeScope(true, context, sub, vars.copy()),
-					this.createMaybeScope(this.random.nextInt(3) != 0, context, sub, vars.copy())
+				condition,
+				ifBlock,
+				elseBlock,
+				elseBlock.completesNormally()
+					? VarsEntry.merge(ifBlock.varsEntry(), elseBlock.varsEntry())
+					: ifBlock.varsEntry(),
+				breakOuts
 			);
 		}
 	}
 
-	private Statement createWhileStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		if (completesNormally) {
-			if (this.random.nextInt(5) == 0) {
-				// TODO add must break
-			}
-			WhileStatement whileStatement = new WhileStatement(new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(vars)));
-			context.addContinuable(whileStatement);
-			context.addBreak(whileStatement);
-			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(whileStatement);
-			context.removeBreak(whileStatement);
-			return whileStatement;
+	private static List<? extends SimpleSingleNoFallThroughStatement> mergeBreakOuts(List<? extends SimpleSingleNoFallThroughStatement> as, List<? extends SimpleSingleNoFallThroughStatement> bs) {
+		if (as == null) {
+			return bs;
+		} else if (bs == null) {
+			return as;
 		} else {
-			// while true without a break
-			WhileTrueStatement whileStatement = new WhileTrueStatement();
-			context.addContinuable(whileStatement);
-			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(whileStatement);
-			return whileStatement;
+			List<SimpleSingleNoFallThroughStatement> stats = new ArrayList<>(as.size() + bs.size());
+			stats.addAll(as);
+			stats.addAll(bs);
+			return stats;
 		}
 	}
 
-	private Statement createForStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
+	private Statement createWhileStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
+		if (completesNormally) {
+			if (this.random.nextInt(4) == 0) {
+				// while true with breaks
+				context.neededBreaks++;
+				context.breakTargets++;
+				context.continueTargets++;
+
+				long cache = context.partial(this.random, 0);
+				// doesn't matter if the body completes or not
+				var body = this.createMaybeScope(
+					this.random.nextInt(5) == 0, context, params, inVars);
+				context.restore(cache); // needed for split breakouts
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, body.breakOuts(), true, true, true);
+
+				return new WhileTrueStatement(
+					body,
+					breakOuts[1],
+					breakOuts[2],
+					mergeVars(breakOuts[1]),
+					breakOuts[0]
+				);
+			} else {
+				// while with condition
+				context.breakTargets++;
+				context.continueTargets++;
+
+				// FIXME: conditions can introduce new variables
+				var condition = new ConditionStatement(inVars, this.expressionCreator.buildCondition(inVars));
+
+
+				long cache = context.partial(this.random, 0);
+				// doesn't matter if the body completes or not
+				var body = this.createMaybeScope(
+					this.random.nextInt(5) == 0, context, params, inVars);
+				context.restore(cache); // needed for split breakouts
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, body.breakOuts(), false, true, true);
+
+				return new WhileStatement(
+					condition,
+					body,
+					breakOuts[1],
+					breakOuts[2],
+					VarsEntry.merge(mergeVars(breakOuts[1]), body.varsEntry()),
+					breakOuts[0]
+				);
+			}
+		} else {
+			// while true without any breaks
+			context.continueTargets++;
+
+			// doesn't matter if the body completes or not
+			var body = this.createMaybeScope(
+				this.random.nextInt(5) == 0, context, params, inVars);
+			// we dont need breaks, so restoring isn't really needed
+
+			List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+				this.random, body.breakOuts(), false, false, true);
+
+			return new WhileTrueStatement(
+				body,
+				breakOuts[1],
+				breakOuts[2],
+				VarsEntry.never(),
+				breakOuts[0]
+			);
+		}
+	}
+
+	private static VarsEntry mergeVars(List<? extends Statement> breakOut) {
+		VarsEntry vars = VarsEntry.never();
+		if (breakOut != null) {
+			for (Statement s : breakOut) {
+				vars = VarsEntry.merge(vars, s.varsEntry());
+			}
+		}
+		return vars;
+	}
+
+
+	private Statement createForStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
+		// TODO: weirder for loops (i.e. init, cond, incr not using the same postFinallyVars)
+
 		if (completesNormally) {
 			if (this.random.nextInt(5) == 0) {
-				// TODO add must break
+				// infinite for with breaks
+				context.neededBreaks++;
+				context.breakTargets++;
+				context.continueTargets++;
+
+				Type outerType = this.typeCreator.createNumericalType();
+				VarsEntry vars = new VarsEntry(inVars);
+				Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
+				vars.create(var, true);
+				vars.freeze();
+
+				long cache = context.partial(this.random, 0);
+				// doesn't matter if the body completes or not
+				var body = this.createMaybeScope(
+					this.random.nextInt(5) == 0, context, params, vars);
+				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, body.breakOuts(), true, true, true);
+
+				return new ForStatement(
+					new VarDefStatement.VarDeclaration(var, 0, this.expressionCreator.createExpression(outerType, inVars)),
+					null,
+					this.expressionCreator.buildIncrement(var),
+					body,
+					breakOuts[1],
+					breakOuts[2],
+					VarsEntry.applyScopeTo(inVars, mergeVars(breakOuts[1])),
+					applyScopesToBreakOut(inVars, breakOuts[0])
+				);
+			} else {
+				// normal for
+				context.breakTargets++;
+				context.continueTargets++;
+
+				Type outerType = this.typeCreator.createNumericalType();
+				VarsEntry vars = new VarsEntry(inVars);
+				Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
+				vars.create(var, true);
+				vars.freeze();
+
+				long cache = context.partial(this.random, 0);
+				// doesn't matter if the body completes or not
+				var body = this.createMaybeScope(
+					this.random.nextInt(5) == 0, context, params, vars);
+				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, body.breakOuts(), false, true, true);
+
+				return new ForStatement(
+					new VarDefStatement.VarDeclaration(var, 0, this.expressionCreator.createExpression(outerType, inVars)),
+					this.expressionCreator.buildCondition(var),
+					this.expressionCreator.buildIncrement(var),
+					body,
+					breakOuts[1],
+					breakOuts[2],
+					VarsEntry.applyScopeTo(inVars, VarsEntry.merge(mergeVars(breakOuts[1]), body.varsEntry())),
+					applyScopesToBreakOut(inVars, breakOuts[0])
+				);
 			}
+		} else {
+			// infinite for without breaks
+			context.continueTargets++;
+
 			Type outerType = this.typeCreator.createNumericalType();
-			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
+			VarsEntry vars = new VarsEntry(inVars);
+			Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, true);
+			vars.freeze();
 
-			// TODO: weirder for loops (i.e. init, cond, incr not using the same var)
+			// doesn't matter if the body completes or not
+			var body = this.createMaybeScope(
+				this.random.nextInt(5) == 0, context, params, vars);
 
-			ForStatement forStatement = new ForStatement(
-					new VarDefStatement.VarDeclaration(var, 0, this.expressionCreator.createExpression(outerType, vars)),
-					new ConditionStatement(vars.copy(), this.expressionCreator.buildCondition(var)),
-					this.expressionCreator.buildIncrement(var), vars);
+			List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+				this.random, body.breakOuts(), false, false, true);
 
-			context.addContinuable(forStatement);
-			context.addBreak(forStatement);
-			// doesn't matter if it the inner completes normally or not
-			forStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(forStatement);
-			context.removeBreak(forStatement);
-			return forStatement;
-		} else {
-			// TODO: non completing for?
-
-			// while true without a break
-			WhileTrueStatement whileStatement = new WhileTrueStatement();
-			context.addContinuable(whileStatement);
-			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(whileStatement);
-			return whileStatement;
+			return new ForStatement(
+				new VarDefStatement.VarDeclaration(var, 0, this.expressionCreator.createExpression(outerType, inVars)),
+				null,
+				this.expressionCreator.buildIncrement(var),
+				body,
+				breakOuts[1],
+				breakOuts[2],
+				VarsEntry.never(),
+				applyScopesToBreakOut(inVars, breakOuts[0])
+			);
 		}
 	}
 
-	private Statement createForEachStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		if (completesNormally) {
-			if (this.random.nextInt(5) == 0) {
-				// TODO add must break
-			}
+	private static List<? extends SimpleSingleNoFallThroughStatement> applyScopesToBreakOut(VarsEntry inVars, List<? extends SimpleSingleNoFallThroughStatement> breakOut) {
+		return breakOut.stream().map(s -> applyScopeToBreakOut(s, inVars)).toList();
+	}
 
-			List<Var> arrayTypes = vars.vars.entrySet().stream()
-					.filter(v -> v.getKey().type() instanceof ArrayType && v.getValue().isDefiniteAssigned())
-					.map(Map.Entry::getKey).toList();
+	private Statement createForEachStatement(Context context, Params params, VarsEntry inVars) {
+		context.breakTargets++;
+		context.continueTargets++;
 
-			if (arrayTypes.isEmpty()) {
-				return this.createForStatement(completesNormally, context, params, vars);
-			}
+		List<Var> arrayTypes = inVars != null ? inVars.vars.entrySet().stream()
+			.filter(v -> v.getKey().type() instanceof ArrayType && v.getValue().isDefiniteAssigned())
+			.map(Map.Entry::getKey).toList() : List.of();
 
-			Var arrVar = arrayTypes.get(this.random.nextInt(arrayTypes.size()));
+		VarsEntry vars = new VarsEntry(inVars);
+		Expression collection;
+		Type base;
 
-			ArrayType type = (ArrayType) arrVar.type();
-			Type base = type.depth() == 1 ? type.base() : ArrayType.ofDepth(type.base(), type.depth() - 1);
-
-			final Var var = new Var(vars.nextName(), base, FinalType.NOT_FINAL);
-			vars.create(var, true);
-
-			ForEachStatement forEachStatement = new ForEachStatement(
-					new VarDefStatement.VarDeclaration(var, 0, null),
-					arrVar, vars);
-
-			context.addContinuable(forEachStatement);
-			context.addBreak(forEachStatement);
-			// doesn't matter if it the inner completes normally or not
-			forEachStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(forEachStatement);
-			context.removeBreak(forEachStatement);
-			return forEachStatement;
+		if (arrayTypes.isEmpty() || this.random.nextInt(10) == 0) {
+			final ArrayType arrayType = this.typeCreator.createArrayType();
+			collection = this.expressionCreator.createExpression(arrayType, inVars);
+			base = arrayType.componentType();
 		} else {
-			// TODO: non completing foreach?
-
-			// while true without a break
-			WhileTrueStatement whileStatement = new WhileTrueStatement();
-			context.addContinuable(whileStatement);
-			// doesn't matter if it the inner completes normally or not
-			whileStatement.setBlock(this.createMaybeScope(this.random.nextInt(5) == 0, context, params, vars.copy()));
-			context.removeContinuable(whileStatement);
-			return whileStatement;
+			final Var var = arrayTypes.get(this.random.nextInt(arrayTypes.size()));
+			collection = var::javaLike;
+			base = ((ArrayType) var.type()).componentType();
 		}
+
+		final Var var = new Var(vars.nextName(), base, FinalType.NOT_FINAL);
+		vars.create(var, true);
+		vars.freeze();
+
+		long cache = context.partial(this.random, 0);
+		final Statement body = this.createMaybeScope(
+			this.random.nextInt(5) == 0, context, params, vars);
+		context.restore(cache);
+
+		List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+			this.random, body.breakOuts(), false, true, true);
+
+		return new ForEachStatement(
+			new VarDefStatement.VarDeclaration(var, 0, null),
+			collection,
+			body,
+			breakOuts[1],
+			breakOuts[2],
+			VarsEntry.applyScopeTo(inVars, VarsEntry.merge(mergeVars(breakOuts[1]), body.varsEntry())),
+			applyScopesToBreakOut(inVars, breakOuts[0])
+		);
+
+
 	}
 
 	private Statement createMonitorStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		Statement st = this.createMaybeScope(completesNormally, context, params, vars.copy());
+		Scope st = this.createScope(completesNormally, false, context, params, vars);
 
 		return new MonitorStatement(st);
 	}
 
 	private List<TryCatchStatement.CatchClause> makeCatches(
-			boolean atLeastOneCompletesNormally, Context context, Params params, VarsEntry vars) {
+		boolean atLeastOneCompletesNormally, Context context, Params params, VarsEntry vars) {
 		int catchCount = 1;// TODO: multiple clauses, but needs dominance checking: poisson(0.7) + 1;
 		List<TryCatchStatement.CatchClause> catches = new ArrayList<>(catchCount);
 
@@ -263,35 +454,43 @@ public class Creator {
 				}
 			}
 
-			VarsEntry entry = vars.copy();
-			final Var var = new Var(vars.nextName(), BasicType.EXCEPTION, FinalType.NOT_FINAL);
+			VarsEntry entry = new VarsEntry(vars);
+			final Var var = new Var(entry.nextName(), BasicType.EXCEPTION, FinalType.NOT_FINAL);
 			entry.create(var, true);
-			catches.add(new TryCatchStatement.CatchClause(var, this.createMaybeScope(shouldComplete, context, sub, entry)));
+			long cache = context.partial(this.random, catchCount);
+			var clause = new TryCatchStatement.CatchClause(var, this.createScope(shouldComplete, false, context, sub, entry));
+			catches.add(clause);
+			context.restore(cache);
+			context.applyBreakOuts(clause.catchStatement().breakOuts());
 		}
 
 		return catches;
 	}
 
-	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		int tryCatchFinallyCase = this.random.nextInt(3); // 0 => only try, 1 => only finally
-
-		Params sub = params.div(tryCatchFinallyCase == 2 ? 1.6 : 1.4);
+	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
+		int tryCatchFinallyCase = this.random.nextInt(3); // 0 => only catch, 1 => only finally
 
 		boolean tryComplete = completesNormally;
 		boolean catchComplete = completesNormally;
 		boolean finallyComplete = completesNormally;
+		double paramDiv;
+		double contextDiv;
 		switch (tryCatchFinallyCase) {
 			case 0 -> {
 				switch (this.random.nextInt(3)) {
 					case 0 -> tryComplete = false;
 					case 1 -> catchComplete = false;
 				}
+				paramDiv = 1.4;
+				contextDiv = 2.3;
 			}
 			case 1 -> {
 				switch (this.random.nextInt(3)) {
 					case 0 -> tryComplete = true;
 					case 1 -> finallyComplete = true;
 				}
+				paramDiv = 1.4;
+				contextDiv = 1.6;
 			}
 			case 2 -> {
 				if (completesNormally) {
@@ -307,91 +506,269 @@ public class Creator {
 						catchComplete = this.random.nextBoolean();
 					}
 				}
+				paramDiv = 1.6;
+				contextDiv = 2.9;
+			}
+			default -> throw new IllegalStateException();
+		}
+
+		Params sub = params.div(paramDiv);
+		long preTryCache = context.partial(this.random, contextDiv);
+
+		Scope tryStat = this.createScope(tryComplete, false, context, sub, inVars);
+
+		context.restore(preTryCache);
+		context.applyBreakOuts(tryStat.breakOuts());
+		contextDiv -= 1;
+
+
+		VarsEntry postTryVars = VarsEntry.merge(inVars, tryStat.varsEntry());
+
+		List<TryCatchStatement.CatchClause> catchClauses;
+		if (tryCatchFinallyCase == 1) {
+			catchClauses = List.of();
+		} else {
+			long preCatch = context.partial(this.random, contextDiv / 2.301); // epsilon for rounding
+			catchClauses = this.makeCatches(catchComplete, context, sub, postTryVars);
+			context.restore(preCatch);
+			for (TryCatchStatement.CatchClause catchClause : catchClauses) {
+				context.applyBreakOuts(catchClause.catchStatement().breakOuts());
 			}
 		}
 
-		Statement tryStat = this.createMaybeScope(tryComplete, context, sub, vars.copy());
-		List<TryCatchStatement.CatchClause> catchClauses = tryCatchFinallyCase == 1
-				? List.of()
-				: this.makeCatches(catchComplete, context, sub, vars);
-		Statement finallyStat = tryCatchFinallyCase == 0
-				? null
-				: this.createMaybeScope(finallyComplete, context, sub, vars.copy());
 
-		final TryCatchStatement tryCatchStatement = new TryCatchStatement(tryStat, catchClauses, finallyStat, vars.copy());
+		Scope finallyStat;
+		List<? extends SimpleSingleNoFallThroughStatement> breakOuts;
+		VarsEntry postVars;
+
+		if (tryCatchFinallyCase == 0) {
+			// no finally, breakouts are from try and catch
+			finallyStat = null;
+			breakOuts = catchClauses.isEmpty() ? tryStat.breakOuts() : Stream.concat(
+				tryStat.breakOuts().stream(),
+				catchClauses.stream()
+					.map(TryCatchStatement.CatchClause::catchStatement)
+					.map(Statement::breakOuts)
+					.filter(Objects::nonNull)
+					.flatMap(Collection::stream)
+			).toList();
+			postVars = catchClauses.isEmpty() ? postTryVars : VarsEntry.merge(
+				postTryVars,
+				mergeVars(catchClauses.stream()
+					.map(TryCatchStatement.CatchClause::catchStatement)
+					.toList()));
+		} else {
+			VarsEntry mergedTryBreakOutsVars = mergeVars(tryStat.breakOuts());
+			final List<? extends SimpleSingleNoFallThroughStatement> mergedCatchBreakOuts = catchClauses.stream()
+				.map(TryCatchStatement.CatchClause::catchStatement)
+				.map(Statement::breakOuts)
+				.filter(Objects::nonNull)
+				.flatMap(Collection::stream)
+				.toList();
+			VarsEntry mergedCatchBreakOutVars = mergeVars(mergedCatchBreakOuts);
+			final VarsEntry postCatchVars = mergeVars(catchClauses.stream()
+				.map(TryCatchStatement.CatchClause::catchStatement)
+				.toList());
+			VarsEntry preFinally = VarsEntry.merge(postTryVars, mergedCatchBreakOutVars, mergedTryBreakOutsVars, postCatchVars);
+			// catch vars are already gone cause of the merge with try
+
+			if (!finallyComplete) {
+				// if finally doesn't complete, all breakouts are from finally only
+				context.restore(preTryCache);
+			}
+
+			finallyStat = this.createScope(finallyComplete, false, context, sub, preFinally);
+
+			postVars = VarsEntry.applyScopeTo(inVars, finallyStat.varsEntry());
+			if (finallyStat.completesNormally()) {
+				// finally completes normally, breakouts are from try, catch and finally
+				breakOuts = Stream.concat(
+					finallyStat.breakOuts().stream(),
+					Stream.concat(
+							tryStat.breakOuts().stream(),
+							mergedCatchBreakOuts.stream()
+						)
+						.map(stat -> applyFinallyToBreakOut(stat, inVars, preFinally, finallyStat.varsEntry())
+						)).toList();
+			} else {
+				// finally doesn't complete normally, real breakouts are from finally only
+				breakOuts = Stream.concat(
+					Stream.concat(
+							tryStat.breakOuts().stream(),
+							mergedCatchBreakOuts.stream()
+						)
+						.map(WrappedBreakOutStatement::markDead),
+					finallyStat.breakOuts().stream()
+				).toList();
+			}
+		}
+
+		final TryCatchStatement tryCatchStatement = new TryCatchStatement(
+			tryStat,
+			catchClauses,
+			finallyStat,
+			postVars,
+			breakOuts
+		);
+
 		assert tryCatchStatement.completesNormally() == completesNormally;
 		return tryCatchStatement;
 
 	}
 
+	private static WrappedBreakOutStatement applyFinallyToBreakOut(
+		SimpleSingleNoFallThroughStatement stat,
+		VarsEntry scopeVars,
+		VarsEntry preFinallyVars,
+		VarsEntry finallyVars) {
+		if(stat instanceof WrappedBreakOutStatement wrapped && wrapped.dead()) {
+			return wrapped;
+		}
+		return new WrappedBreakOutStatement(stat, VarsEntry.applyFinallyTo(
+			preFinallyVars,
+			finallyVars,
+			VarsEntry.applyScopeTo(scopeVars, stat.varsEntry())));
+	}
+
+	private static WrappedBreakOutStatement applyScopeToBreakOut(
+		SimpleSingleNoFallThroughStatement stat,
+		VarsEntry scopeVars) {
+		if(stat instanceof WrappedBreakOutStatement wrapped && wrapped.dead()) {
+			return wrapped;
+		}
+		// todo: optimize if no wrapping is needed?
+		return new WrappedBreakOutStatement(stat, VarsEntry.applyScopeTo(scopeVars, stat.varsEntry()));
+	}
+
 	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {
-		LabeledStatement label = new LabeledStatement();
-
-		Statement st = this.createStatement(true, context, params, vars.copy());
-
-		if (st instanceof LabelImpossible) {
-			return st;
-		}
-
 		if (completesNormally) {
-			context.addBreak(label);
+			if (this.random.nextInt(5) == 0) {
+				context.neededBreaks++;
+				context.breakTargets++;
 
-			// TODO: also allow it to not complete normally and as long as there is at least one break to this one
-			label.setInner(
-					st
-			);
-			context.removeBreak(label);
+
+				long cache = context.partial(this.random, 0);
+				Statement st = this.createStatement(false, context, params, vars);
+
+				if (st instanceof LabelImpossible) {
+					// how?
+					throw new RuntimeException("LabelImpossible");
+				}
+
+				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, st.breakOuts(), true, true, false);
+
+				return new LabeledStatement(
+					st,
+					breakOuts[1],
+					breakOuts[0]
+				);
+
+			} else {
+				context.breakTargets++;
+
+				long cache = context.partial(this.random, 0);
+				Statement st = this.createStatement(true, context, params, vars);
+
+				if (st instanceof LabelImpossible) {
+					context.breakTargets--;
+					if (!st.breakOuts().isEmpty()) {
+						throw new RuntimeException("LabelImpossible");
+					}
+					return st;
+				}
+
+				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
+
+				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
+					this.random, st.breakOuts(), false, true, false);
+
+				return new LabeledStatement(
+					st,
+					breakOuts[1],
+					breakOuts[0]
+				);
+			}
 		} else {
-			label.setInner(
-					st
-			);
+			// labeled, but no breaks
+			Statement st = this.createStatement(false, context, params, vars);
+			if (st instanceof LabelImpossible) {
+				return st;
+			}
+			return new LabeledStatement(st, List.of(), st.breakOuts());
 		}
-
-		return label;
 	}
 
 	Statement createMaybeScope(boolean completesNormally, Context context, Params params, VarsEntry vars) {
 		if (this.random.nextInt(params.size < 3 ? 2 : 4) == 0) {
-			Scope scope = new Scope(vars.copy());
-
-			scope.addStatement(this.createStatement(completesNormally, context, params, vars.copy()));
-
-			return scope;
+			return this.createStatement(completesNormally, context, params, vars);
 		} else {
-			return this.createScope(completesNormally, false, context, params, vars.copy());
+			return this.createScope(completesNormally, false, context, params, vars);
 		}
 	}
 
-	Scope createScope(boolean completesNormally, boolean root, Context context, Params params, VarsEntry vars) {
-		Scope scope = new Scope(vars);
-
-		int targetSize = params.targetSize(this.random) + (completesNormally ? 0 : 1);
+	Scope createScope(boolean completesNormally, boolean root, Context context, Params params, VarsEntry inVars) {
+		// can't have an empty scope if we are not supposed to complete normally,
+		// or if we need to have any breaks
+		int targetSize = params.targetSize(this.random) + (completesNormally && context.canBeSingle(true) ? 0 : 1);
 		if (targetSize == 0) {
-			if (completesNormally) {
-				return scope;
-			}
+			return new Scope(List.of(), inVars, List.of());
 		}
+
+		List<Statement> statements = new ArrayList<>();
+		VarsEntry vars = inVars;
 
 		Params sub = params.div(Math.sqrt(targetSize));
 
+		boolean stolenBreak = false;
+		if (!completesNormally && context.neededBreaks > 0 && random.nextBoolean()) {
+			context.neededBreaks--;
+			stolenBreak = true;
+		}
+
 		if (root) {
-			scope.addStatement(
-					this.createVarDefStatement(vars, 4 + this.random.nextInt(4))
-			);
+			Statement subStatement = this.createVarDefStatement(vars, 4 + this.random.nextInt(4));
+			statements.add(subStatement);
+			vars = subStatement.varsEntry();
 		}
 
 		// all but the last statement have to complete normally
-		for (int i = 1; i < targetSize; i++) {
-			scope.addStatement(
-					this.createStatement(true, context, sub, vars)
-			);
+		for (int i = targetSize; i > 1; i--) {
+			long cache = context.partial(this.random, i);
+			Statement statement = this.createStatement(true, context, sub, vars);
+			statements.add(statement);
+			context.restore(cache);
+			context.applyBreakOuts(statement.breakOuts());
+			vars = statement.varsEntry();
+
+			assert context.breakTargets > 0 || statement.breakOuts().stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
 		}
 
-		scope.addStatement(
-				this.createStatement(completesNormally, context, sub, vars)
-		);
+		// last statement can be breaking
+		{
+			if (stolenBreak) {
+				// add the needed break back
+				context.neededBreaks++;
+			}
+			Statement statement = this.createStatement(completesNormally, context, sub, vars);
+			statements.add(statement);
+			vars = statement.varsEntry();
 
-		return scope;
+			assert context.breakTargets > 0 || statement.breakOuts().stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
+		}
+
+		return new Scope(
+			statements,
+			VarsEntry.applyScopeTo(inVars, vars),
+			statements.stream()
+				.map(Statement::breakOuts)
+				.filter(Objects::nonNull)
+				.flatMap(List::stream)
+				.map(s -> applyScopeToBreakOut(s, inVars))
+				.toList()
+		);
 	}
 
 
@@ -410,11 +787,11 @@ public class Creator {
 
 	public static void main(String[] args) {
 		Statement statement = (new Creator(0L)).createScope(
-				false,
-				true,
-				new Context(),
-				new Params(30),
-				new VarsEntry()
+			false,
+			true,
+			new Context(),
+			new Params(10),
+			new VarsEntry()
 		);
 		System.out.println(statement);
 

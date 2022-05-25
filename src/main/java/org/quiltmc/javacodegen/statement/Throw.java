@@ -2,15 +2,16 @@ package org.quiltmc.javacodegen.statement;
 
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
-public class Throw implements SimpleSingleNoFallThroughStatement {
-	@Override
-	public String toString() {
-		return "Throw";
+public record Throw(
+	VarsEntry breakOutVars
+) implements SimpleSingleNoFallThroughStatement {
+	public Throw {
+		VarsEntry.freeze(breakOutVars);
 	}
 
 	@Override
-	public VarsEntry varsFor() {
-		return new VarsEntry();
+	public String toString() {
+		return "Throw";
 	}
 
 	@Override

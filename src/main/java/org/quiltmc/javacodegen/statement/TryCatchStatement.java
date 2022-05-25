@@ -5,17 +5,16 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.List;
 
-public class TryCatchStatement implements Statement {
-	private final Statement tryStatement;
-	private final List<CatchClause> catches;
-	private final Statement finallyStatement;
-	private final VarsEntry vars;
-
-	public TryCatchStatement(Statement tryStatement, List<CatchClause> catches, Statement finallyStatement, VarsEntry vars) {
-		this.tryStatement = tryStatement;
-		this.catches = catches;
-		this.finallyStatement = finallyStatement;
-		this.vars = vars;
+// TODO: resources
+public record TryCatchStatement(
+	Scope tryStatement,
+	List<CatchClause> catches,
+	Scope finallyStatement,
+	VarsEntry varsEntry,
+	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
+) implements Statement {
+	public TryCatchStatement {
+		VarsEntry.freeze(varsEntry);
 	}
 
 	@Override
@@ -36,35 +35,30 @@ public class TryCatchStatement implements Statement {
 	}
 
 	@Override
-	public VarsEntry varsFor() {
-		return this.vars;
-	}
-
-	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation).append("try ").append('\n');
-		this.tryStatement.javaLike(builder, indentation + (this.tryStatement instanceof Scope ? "" : "\t"));
+		this.tryStatement.javaLike(builder, indentation );
 		for (CatchClause aCatch : this.catches) {
 			aCatch.javaLike(builder, indentation);
 		}
 		if (this.finallyStatement != null) {
 			builder.append(indentation).append("finally ").append('\n');
-			this.finallyStatement.javaLike(builder, indentation + (this.finallyStatement instanceof Scope ? "" : "\t"));
+			this.finallyStatement.javaLike(builder, indentation);
 		}
 	}
 
-	public record CatchClause(Var catchVar, Statement catchStatement) {
+	public record CatchClause(Var catchVar, Scope catchStatement) {
 		public void javaLike(StringBuilder builder, String indentation) {
 			builder
-					.append(indentation)
-					.append("catch (");
+				.append(indentation)
+				.append("catch (");
 			this.catchVar.type().javaLike(builder);
 			builder
-					.append(" ")
-					.append(this.catchVar.name())
-					.append(")")
-					.append('\n');
-			this.catchStatement.javaLike(builder, indentation + (this.catchStatement instanceof Scope ? "" : "\t"));
+				.append(" ")
+				.append(this.catchVar.name())
+				.append(")")
+				.append('\n');
+			this.catchStatement.javaLike(builder, indentation);
 		}
 	}
 }
