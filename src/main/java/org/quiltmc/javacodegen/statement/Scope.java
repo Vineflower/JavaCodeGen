@@ -29,5 +29,6 @@ public record Scope(
 			statement.javaLike(builder, indentation + "\t");
 		}
 		builder.append(indentation).append("}\n");
+		this.addDebugVarInfo(builder, indentation);
 	}
 }

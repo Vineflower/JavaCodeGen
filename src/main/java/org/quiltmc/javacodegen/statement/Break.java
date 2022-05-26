@@ -13,6 +13,7 @@ public final class Break implements SimpleSingleNoFallThroughStatement {
 	) {
 		this.simple = simple;
 		this.breakOutVars = breakOutVars;
+		assert this.breakOutVars != null;
 
 		VarsEntry.freeze(breakOutVars);
 	}
@@ -30,6 +31,14 @@ public final class Break implements SimpleSingleNoFallThroughStatement {
 			builder.append(indentation).append("break;\n");
 		} else {
 			builder.append(indentation).append("break label_").append(this.target.getId()).append(";\n");
+		}
+		if (Statement.DEBUG_BREAKS) {
+			builder.append(indentation)
+				.append("// id: ")
+				.append(System.identityHashCode(this))
+				.append(" -> ")
+				.append(this.target.getId())
+				.append("\n");
 		}
 	}
 

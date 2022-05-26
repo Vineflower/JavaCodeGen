@@ -31,6 +31,7 @@ public record VarDefStatement(
 			first = false;
 		}
 		builder.append(";\n");
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	public record VarDeclaration(

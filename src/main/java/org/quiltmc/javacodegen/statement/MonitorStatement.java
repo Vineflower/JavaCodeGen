@@ -27,5 +27,6 @@ public record MonitorStatement(
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation).append("synchronized (this) \n");
 		this.body.javaLike(builder, indentation);
+		this.addDebugVarInfo(builder, indentation);
 	}
 }

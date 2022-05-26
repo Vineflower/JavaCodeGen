@@ -39,6 +39,7 @@ public record ForEachStatement(
 		builder.append(" )\n");
 
 		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 

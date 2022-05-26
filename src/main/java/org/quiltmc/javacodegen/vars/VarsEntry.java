@@ -2,6 +2,7 @@ package org.quiltmc.javacodegen.vars;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public final class VarsEntry {
 	public final Map<Var, VarState> vars;
@@ -53,18 +54,15 @@ public final class VarsEntry {
 
 	public static VarsEntry applyScopeTo(VarsEntry scope, VarsEntry inner) {
 		// todo: pattern match can leak out of scopes
-
-		if (scope == null) {
-			return null;
-		}
+		Objects.requireNonNull(scope, "scope has to be reachable");
 
 		if (inner == null) {
 			return null;
 		}
 
-		VarsEntry out = inner.frozen ? inner.copy() : scope;
+		VarsEntry out = inner.frozen ? inner.copy() : inner;
 
-		inner.vars.entrySet().removeIf(e -> !scope.vars.containsKey(e.getKey()));
+		out.vars.entrySet().removeIf(e -> !scope.vars.containsKey(e.getKey()));
 
 		return out;
 	}
@@ -89,6 +87,14 @@ public final class VarsEntry {
 			}
 			return out;
 		}
+	}
+
+	private static VarsEntry EMPTY = new VarsEntry();
+	static {
+		EMPTY.freeze();
+	}
+	public static VarsEntry empty() {
+		return EMPTY;
 	}
 
 	public void create(Var var, boolean isAssigned) {
@@ -123,11 +129,17 @@ public final class VarsEntry {
 		return null;
 	}
 
-	public void freeze() {
+	public VarsEntry freeze() {
 		this.frozen = true;
+		return this;
 	}
 
 	public boolean isFrozen() {
 		return this.frozen;
+	}
+
+	public void debugPrint(StringBuilder builder, String indentation) {
+		this.vars.forEach((var, state) -> builder
+			.append(indentation).append("// ").append(var.name()).append(" = ").append(state.toString()).append("\n"));
 	}
 }

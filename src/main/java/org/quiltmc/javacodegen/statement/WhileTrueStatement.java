@@ -30,6 +30,7 @@ public record WhileTrueStatement(
 
 		builder.append(indentation).append("while (true) \n");
 		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	@Override

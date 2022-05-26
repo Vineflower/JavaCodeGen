@@ -129,6 +129,9 @@ class Context {
 			List<SimpleSingleNoFallThroughStatement> continues = new ArrayList<>();
 			List<SimpleSingleNoFallThroughStatement> remaining = new ArrayList<>();
 
+			// for assert at the end
+			int neededBreaks = this.neededBreaks;
+
 
 			for (SimpleSingleNoFallThroughStatement s : breakOuts) {
 				if (s instanceof Break) {
@@ -151,6 +154,7 @@ class Context {
 
 			if (canHaveBreaks) {
 				if (needsBreak) {
+					neededBreaks--; // update for assert at the end
 					List<SimpleSingleNoFallThroughStatement> fakeBreaks = new ArrayList<>();
 					breaks.removeIf(s ->
 						WrappedBreakOutStatement.isDead(s) && fakeBreaks.add(s) // add always returns true
@@ -168,10 +172,24 @@ class Context {
 							if(this.neededBreaks > 0) {
 								this.neededBreaks--;
 							}
+							x--;
 						}
 					}
+					for (; this.neededBreaks > 0; this.neededBreaks--) {
+						final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
+						remaining.add(stat);
+						WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+					}
+					assert breaks.stream().anyMatch(stat -> !WrappedBreakOutStatement.isDead(stat));
 					fakeBreaks.removeIf(s ->
-						random.nextInt(this.breakTargets) != 0 && remaining.add(s) // add always returns true
+						{
+							if (random.nextInt(this.breakTargets) != 0) {
+								remaining.add(s);
+								WrappedBreakOutStatement.<Break>baseAs(s).setSimple(false);
+								return true;
+							}
+							return false;
+						} // add always returns true
 					);
 					breaks.addAll(fakeBreaks);
 				} else {
@@ -188,12 +206,18 @@ class Context {
 							}
 						}
 					}
+					for (; this.neededBreaks > 0; this.neededBreaks--) {
+						final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
+						remaining.add(stat);
+						WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+					}
 				}
 
 				this.breakTargets--;
 			} else {
 				remaining.addAll(breaks);
-				breaks.forEach(stat -> WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false));
+				breaks.forEach(stat ->
+					WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false));
 				breaks.clear();
 			}
 
@@ -215,7 +239,8 @@ class Context {
 				continues.clear();
 			}
 
-
+			assert !needsBreak || breaks.stream().anyMatch(stat -> !WrappedBreakOutStatement.isDead(stat));
+			assert neededBreaks == 0 || remaining.stream().filter(s -> WrappedBreakOutStatement.base(s) instanceof Break && !WrappedBreakOutStatement.isDead(s)).count() >= neededBreaks;
 			assert breakTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
 			assert continueTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Continue);
 			return new List[]{remaining, breaks, continues};

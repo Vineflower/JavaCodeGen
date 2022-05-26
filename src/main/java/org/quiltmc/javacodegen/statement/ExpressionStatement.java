@@ -25,6 +25,7 @@ public class ExpressionStatement implements SimpleSingleCompletingStatement {
 		builder.append(indentation);
 		this.expression.javaLike(builder);
 		builder.append(";\n");
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	@Override

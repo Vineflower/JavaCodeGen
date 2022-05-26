@@ -12,6 +12,7 @@ public final class Continue implements SimpleSingleNoFallThroughStatement {
 	public Continue(boolean simple, VarsEntry breakOutVars) {
 		this.simple = simple;
 		this.breakOutVars = breakOutVars;
+		assert this.breakOutVars != null;
 
 		VarsEntry.freeze(breakOutVars);
 	}

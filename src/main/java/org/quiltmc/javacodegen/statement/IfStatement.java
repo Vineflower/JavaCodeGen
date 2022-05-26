@@ -31,11 +31,7 @@ public record IfStatement(
 			builder.append(indentation).append("else \n");
 			this.ifFalse.javaLike(builder, indentation + (this.ifFalse instanceof Scope ? "" : "\t"));
 		}
-	}
-
-	@Override
-	public VarsEntry varsEntry() {
-		return this.condition.varsEntry();
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	@Override

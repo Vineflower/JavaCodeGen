@@ -17,7 +17,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 50;
+		int count = 100;
 
 		Path path = deleteDirs();
 
@@ -42,8 +42,8 @@ public final class CompilingCreator {
 					false,
 					true,
 					context,
-					new Creator.Params(10),
-					new VarsEntry()
+					new Creator.Params(20),
+					VarsEntry.empty()
 				);
 
 				assert context.canBeSingle(true);
@@ -87,6 +87,7 @@ public final class CompilingCreator {
 			System.out.println(s);
 		}
 
+//		System.exit(0);
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()

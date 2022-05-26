@@ -7,14 +7,17 @@ import java.util.List;
 public record LabeledStatement(
 	Statement inner,
 	List<? extends Statement> breaks,
+	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 ) implements Breakable {
 	public LabeledStatement{
 		this.initMarks(breaks);
-	}
-	@Override
-	public VarsEntry varsEntry() {
-		return this.inner.varsEntry();
+
+		VarsEntry.freeze(varsEntry);
+
+		for (Statement stat : breaks) {
+			WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+		}
 	}
 
 	@Override
@@ -26,6 +29,7 @@ public record LabeledStatement(
 	public void javaLike(StringBuilder builder, String indentation) {
 		this.addLabel(builder, indentation);
 		this.inner.javaLike(builder, indentation);
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 

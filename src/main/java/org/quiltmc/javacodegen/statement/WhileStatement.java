@@ -33,6 +33,7 @@ public record WhileStatement(
 
 		builder.append(indentation).append("while (").append(cond.toString().trim()).append(") \n");
 		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 

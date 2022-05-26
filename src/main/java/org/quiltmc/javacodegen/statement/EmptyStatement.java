@@ -10,6 +10,7 @@ public record EmptyStatement(VarsEntry varsEntry) implements SimpleSingleComplet
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
 		builder.append(indentation).append(";\n");
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	@Override

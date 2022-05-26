@@ -45,6 +45,7 @@ public record TryCatchStatement(
 			builder.append(indentation).append("finally ").append('\n');
 			this.finallyStatement.javaLike(builder, indentation);
 		}
+		this.addDebugVarInfo(builder, indentation);
 	}
 
 	public record CatchClause(Var catchVar, Scope catchStatement) {
