@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Random;
 
 public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
@@ -32,13 +33,15 @@ public final class CompilingCreator {
 		Files.createDirectories(recompiled);
 
 		int failedToGenerate = 0;
+		Random seedGenerator = new Random();
 
 		for (int i = 0; i < count; i++) {
 			try {
 				VarsEntry.resetId();
 
 				final Context context = new Context();
-				Statement statement = (new Creator()).createScope(
+				final long seed = seedGenerator.nextLong() + 3;
+				Statement statement = (new Creator(seed)).createScope(
 					false,
 					true,
 					context,
@@ -58,6 +61,7 @@ public final class CompilingCreator {
 				stringBuilder.append("import java.util.Random;\n");
 
 				stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
+				stringBuilder.append("// seed: ").append(seed).append("\n");
 				stringBuilder.append("public void test()").append(" {\n");
 				statement.javaLike(stringBuilder, "");
 				stringBuilder.append("}\n");
