@@ -18,7 +18,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 100;
+		int count = 1000;
 
 		Path path = deleteDirs();
 
@@ -45,7 +45,7 @@ public final class CompilingCreator {
 					false,
 					true,
 					context,
-					new Creator.Params(20),
+					new Creator.Params(8),
 					VarsEntry.empty()
 				);
 
@@ -58,7 +58,7 @@ public final class CompilingCreator {
 				});
 
 				StringBuilder stringBuilder = new StringBuilder();
-				stringBuilder.append("import java.util.Random;\n");
+				stringBuilder.append("import java.util.*;\n");
 
 				stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
 				stringBuilder.append("// seed: ").append(seed).append("\n");
@@ -95,7 +95,7 @@ public final class CompilingCreator {
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()
-					.exec("java -jar " + QF_JAR + " " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
+					.exec("java -jar " + QF_JAR + " -jrt=1 " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
 
 			serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
 
