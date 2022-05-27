@@ -147,7 +147,7 @@ public class ExpressionCreator {
 		if (vars.vars.size() > 1 && this.random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
-				if (this.random.nextInt(i) == 0) {
+				if (!varVarStateEntry.getKey().finalType().isFinal() && this.random.nextInt(i) == 0) {
 					int j = vars.vars.size();
 					for (Map.Entry<Var, VarState> varVarStateEntryInner : vars.vars.entrySet()) {
 						if (varVarStateEntryInner.getValue().isDefiniteAssigned()) {

@@ -1,7 +1,17 @@
 package org.quiltmc.javacodegen.vars;
 
 public enum FinalType {
-	FINAL,
-	NOT_FINAL,
-	IMPLICIT_FINAL
+	FINAL(true),
+	NOT_FINAL(false),
+	IMPLICIT_FINAL(true);
+
+	private final boolean isFinal;
+
+	FinalType(boolean isFinal) {
+		this.isFinal = isFinal;
+	}
+
+	public boolean isFinal() {
+		return isFinal;
+	}
 }

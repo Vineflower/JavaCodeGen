@@ -593,10 +593,22 @@ public class Creator {
 			default -> throw new IllegalStateException();
 		}
 
+		VarsEntry vars = inVars;
+		Expression resource = null;
+		if (random.nextInt(3) == 0) {
+			vars = new VarsEntry(inVars);
+			Var var = new Var(vars.nextName(), BasicType.SCANNER, FinalType.IMPLICIT_FINAL);
+			vars.create(var, true);
+			vars.freeze();
+
+			// FIXME: assignment expression
+			resource = new LiteralExpression(var.type(), "Scanner " + var.name() + " = new Scanner(System.in)");
+		}
+
 		Params sub = params.div(paramDiv);
 		long preTryCache = context.partial(this.random, contextDiv);
 
-		Scope tryStat = this.createScope(tryComplete, false, context, sub, inVars);
+		Scope tryStat = this.createScope(tryComplete, false, context, sub, vars);
 
 		context.restore(preTryCache);
 		context.applyBreakOuts(tryStat.breakOuts());
@@ -698,6 +710,7 @@ public class Creator {
 			tryStat,
 			catchClauses,
 			finallyStat,
+			resource,
 			postVars,
 			breakOuts
 		);
