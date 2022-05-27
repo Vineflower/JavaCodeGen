@@ -1,9 +1,12 @@
 package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.expression.Expression;
+import org.quiltmc.javacodegen.expression.LiteralExpression;
+import org.quiltmc.javacodegen.expression.VariableExpression;
 import org.quiltmc.javacodegen.statement.*;
 import org.quiltmc.javacodegen.types.ArrayType;
 import org.quiltmc.javacodegen.types.BasicType;
+import org.quiltmc.javacodegen.types.PrimitiveTypes;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
@@ -106,7 +109,7 @@ public class Creator {
 		if (context.canBeSingle(completesNormally) && this.random.nextDouble() * this.random.nextDouble() * params.size <= .5) {
 			stat = this.createSingleStatement(completesNormally, allowSingleVarDef, context, vars);
 		} else {
-			stat = switch (this.random.nextInt(18)) {
+			stat = switch (this.random.nextInt(20)) {
 				case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars);
 				case 1 -> this.createScope(completesNormally, false, context, params, vars);
 				case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars);
@@ -117,6 +120,9 @@ public class Creator {
 				case 16, 17 -> completesNormally // foreach always completes normally
 					? this.createForEachStatement(context, params, vars)
 					: this.createForStatement(false, context, params, vars);
+				case 18, 19 -> completesNormally
+					? this.createSwitchStatement(completesNormally, context, params, vars)
+					: this.createIfStatement(completesNormally, context, params, vars);
 
 				default -> throw new IllegalStateException();
 			};
@@ -445,6 +451,65 @@ public class Creator {
 		);
 
 
+	}
+
+	private Statement createSwitchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
+		List<Var> integralTypes = inVars != null ? inVars.vars.entrySet().stream()
+			.filter(v -> v.getKey().type() instanceof PrimitiveTypes pt && pt.integralType() && v.getValue().isDefiniteAssigned())
+			.map(Map.Entry::getKey).toList() : List.of();
+
+		int branchAmt = 1 + this.poisson(3);
+
+		params.div(Math.sqrt(branchAmt));
+
+		Type type;
+		Expression expression;
+		if (integralTypes.isEmpty()) {
+			type = PrimitiveTypes.INT;
+			expression = new LiteralExpression(type, 10000);
+		} else {
+			Var var = integralTypes.get(random.nextInt(integralTypes.size()));
+			type = var.type();
+			expression = new VariableExpression(var);
+		}
+
+		List<Expression> exprsAll = new ArrayList<>();
+
+		List<SwitchStatement.CaseBranch> caseBranches = new ArrayList<>();
+		for (int i = 0; i < branchAmt; i++) {
+			int caseAmt = random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1;
+
+			List<Expression> caseExprs = new ArrayList<>();
+			for (int j = 0; j < caseAmt; j++) {
+				LiteralExpression litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
+				// FIXME: this is unbelievably bad
+				while (exprsAll.contains(litex)) {
+					litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
+				}
+
+				caseExprs.add(litex);
+				exprsAll.add(litex);
+			}
+
+			caseBranches.add(new SwitchStatement.CaseBranch(caseExprs,
+				this.createMaybeScope(i == branchAmt - 1 || this.random.nextBoolean(), true, context, params, inVars)
+			));
+		}
+
+		var outVars = VarsEntry.merge(inVars, caseBranches.get(caseBranches.size() - 1).statement().varsEntry());
+
+
+		return new SwitchStatement(
+			expression,
+			caseBranches,
+			outVars,
+			caseBranches.stream()
+				.map(SwitchStatement.CaseBranch::statement)
+				.map(Statement::breakOuts)
+				.filter(Objects::nonNull)
+				.flatMap(List::stream)
+				.toList()
+		);
 	}
 
 	private Statement createMonitorStatement(boolean completesNormally, Context context, Params params, VarsEntry vars) {

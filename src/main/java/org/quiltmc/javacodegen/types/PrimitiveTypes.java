@@ -23,6 +23,9 @@ public enum PrimitiveTypes implements Type {
 		return this.boxed;
 	}
 
+	public boolean integralType() {
+		return this == INT || this == BYTE || this == SHORT;
+	}
 
 	@Override
 	public void javaLike(StringBuilder builder) {
