@@ -32,4 +32,8 @@ public class ExpressionStatement implements SimpleSingleCompletingStatement {
 	public String toString() {
 		return "ExpressionStatement[]";
 	}
+
+	public Expression getExpression() {
+		return this.expression;
+	}
 }

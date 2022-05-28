@@ -9,8 +9,8 @@ public record ForEachStatement(
 	VarDefStatement.VarDeclaration varDec,
 	Expression col,
 	Statement block,
-	List<? extends Statement> breaks,
-	List<? extends Statement> continues,
+	List<? extends SimpleSingleNoFallThroughStatement> breaks,
+	List<? extends SimpleSingleNoFallThroughStatement> continues,
 	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 ) implements Continuable{

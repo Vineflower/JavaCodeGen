@@ -1,9 +1,6 @@
 package org.quiltmc.javacodegen;
 
-import org.quiltmc.javacodegen.statement.Return;
 import org.quiltmc.javacodegen.statement.Statement;
-import org.quiltmc.javacodegen.statement.Throw;
-import org.quiltmc.javacodegen.statement.WrappedBreakOutStatement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
@@ -18,7 +15,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 1000;
+		int count = 50;
 
 		Path path = deleteDirs();
 
@@ -39,23 +36,8 @@ public final class CompilingCreator {
 			try {
 				VarsEntry.resetId();
 
-				final Context context = new Context();
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(seed)).createScope(
-					false,
-					true,
-					context,
-					new Creator.Params(8),
-					VarsEntry.empty()
-				);
-
-				assert !context.needsBreakOuts();
-				assert context.continueTargets == 0;
-				assert context.breakTargets == 0;
-				assert statement.breakOuts().stream().allMatch(s -> {
-					var base = WrappedBreakOutStatement.base(s);
-					return base instanceof Return || base instanceof Throw;
-				});
+				Statement statement = (new Creator(seed)).method(20);
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
@@ -69,7 +51,7 @@ public final class CompilingCreator {
 
 				Files.write(fuzzed.resolve("FuzzedClass_" + i + ".java"), stringBuilder.toString().getBytes());
 			} catch (Throwable t) {
-				failedToGenerate ++;
+				failedToGenerate++;
 				System.out.println("Failed to create class " + i);
 				t.printStackTrace();
 			}
@@ -81,7 +63,7 @@ public final class CompilingCreator {
 		}
 
 		Process exec = Runtime.getRuntime().exec(
-				"javac -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
+			"javac -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
 
 		BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
@@ -91,11 +73,11 @@ public final class CompilingCreator {
 			System.out.println(s);
 		}
 
-		//System.exit(0);
+		System.exit(0);
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()
-					.exec("java -jar " + QF_JAR + " -jrt=1 " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
+				.exec("java -jar " + QF_JAR + " -jrt=1 " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
 
 			serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
 
@@ -108,7 +90,7 @@ public final class CompilingCreator {
 			}
 
 			exec = Runtime.getRuntime()
-					.exec("javac -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
+				.exec("javac -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
 
 			serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
@@ -131,10 +113,10 @@ public final class CompilingCreator {
 
 	private static void removeSubFolder(Path path, String fuzzed) throws IOException {
 		final Path subFolder = path.resolve(fuzzed);
-		if(!Files.exists(subFolder)){
+		if (!Files.exists(subFolder)) {
 			return;
 		}
-		if(!Files.isDirectory(subFolder)){
+		if (!Files.isDirectory(subFolder)) {
 			Files.delete(subFolder);
 			return;
 		}

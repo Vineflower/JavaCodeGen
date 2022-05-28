@@ -67,4 +67,8 @@ public final class Break implements SimpleSingleNoFallThroughStatement {
 	public void setSimple(boolean b) {
 		this.simple = b;
 	}
+
+	public boolean isSimple() {
+		return this.simple;
+	}
 }

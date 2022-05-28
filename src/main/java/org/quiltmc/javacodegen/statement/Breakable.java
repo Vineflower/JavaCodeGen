@@ -3,14 +3,14 @@ package org.quiltmc.javacodegen.statement;
 import java.util.List;
 
 public interface Breakable extends Statement {
-	default void initMarks(List<? extends Statement> breaks) {
+	default void initMarks(List<? extends SimpleSingleNoFallThroughStatement> breaks) {
 		breaks.forEach(this::initMark);
 	}
 
 	private void initMark(Statement statement) {
 		WrappedBreakOutStatement.<Break>baseAs(statement).setTarget(this);
 	}
-	List<? extends Statement> breaks();
+	List<? extends SimpleSingleNoFallThroughStatement> breaks();
 
 
 	default boolean hasBreak() {

@@ -5,11 +5,11 @@ import java.util.List;
 public interface Continuable extends Breakable {
 	@Override
 	@Deprecated
-	default void initMarks(List<? extends Statement> breaks) {
+	default void initMarks(List<? extends SimpleSingleNoFallThroughStatement> breaks) {
 		Breakable.super.initMarks(breaks);
 	}
 
-	default void initMarks(List<? extends Statement> breaks, List<? extends Statement> continues) {
+	default void initMarks(List<? extends SimpleSingleNoFallThroughStatement> breaks, List<? extends SimpleSingleNoFallThroughStatement> continues) {
 		Breakable.super.initMarks(breaks);
 		continues.forEach(this::initMark);
 	}
@@ -18,7 +18,7 @@ public interface Continuable extends Breakable {
 		WrappedBreakOutStatement.<Continue>baseAs(statement).setTarget(this);
 	}
 
-	List<? extends Statement> continues();
+	List<? extends SimpleSingleNoFallThroughStatement> continues();
 
 	default boolean hasContinue() {
 		return !this.continues().isEmpty();

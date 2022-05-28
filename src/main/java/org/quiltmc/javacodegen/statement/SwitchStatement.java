@@ -9,7 +9,7 @@ public record SwitchStatement(
 	Expression expression,
 	List<? extends CaseBranch> branches,
 	boolean includeDefault,
-	List<? extends Statement> breaks,
+	List<? extends SimpleSingleNoFallThroughStatement> breaks,
 	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 ) implements Breakable {

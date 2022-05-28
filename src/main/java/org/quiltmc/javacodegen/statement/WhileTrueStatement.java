@@ -8,8 +8,8 @@ import java.util.List;
 public record WhileTrueStatement(
 	/* TODO: const expression */
 	Statement block,
-	List<? extends Statement> breaks,
-	List<? extends Statement> continues,
+	List<? extends SimpleSingleNoFallThroughStatement> breaks,
+	List<? extends SimpleSingleNoFallThroughStatement> continues,
 	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 

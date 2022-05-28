@@ -6,7 +6,7 @@ import java.util.List;
 
 public record LabeledStatement(
 	Statement inner,
-	List<? extends Statement> breaks,
+	List<? extends SimpleSingleNoFallThroughStatement> breaks,
 	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
 ) implements Breakable {

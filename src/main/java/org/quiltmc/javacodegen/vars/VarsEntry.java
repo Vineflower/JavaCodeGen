@@ -1,6 +1,8 @@
 package org.quiltmc.javacodegen.vars;
 
-import java.util.HashMap;
+import org.jetbrains.annotations.Contract;
+
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -10,17 +12,18 @@ public final class VarsEntry {
 	private static int nextId = 0;
 
 	public VarsEntry() {
-		this.vars = new HashMap<>();
+		this.vars = new LinkedHashMap<>();
 	}
 
 	public VarsEntry(VarsEntry vars) {
-		this.vars = new HashMap<>();
+		this.vars = new LinkedHashMap<>();
 		if (vars != null) {
 			this.vars.putAll(vars.vars);
 		}
 		this.frozen = false;
 	}
 
+	@Contract(value = "null, _ -> param2; !null, null -> param1; !null, !null -> !null", pure = true)
 	public static VarsEntry merge(VarsEntry aVars, VarsEntry bVars) {
 		if (aVars == null) {
 			return bVars;
@@ -125,6 +128,7 @@ public final class VarsEntry {
 		return "vvv" + ++nextId;
 	}
 
+	@Contract(pure = true, value = "-> null")
 	public static VarsEntry never() {
 		return null;
 	}

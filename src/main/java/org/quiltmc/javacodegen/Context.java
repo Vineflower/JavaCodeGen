@@ -5,15 +5,36 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.random.RandomGenerator;
 
-class Context {
+public class Context {
+	public final TypeCreator typeCreator;
+	public final ExpressionCreator expressionCreator;
 	int neededBreaks = 0;
 	int neededContinues = 0; // should always be 0
 	int breakTargets = 0;
 	int continueTargets = 0;
 
+	public Context(TypeCreator typeCreator, ExpressionCreator expressionCreator) {
+		this.typeCreator = typeCreator;
+		this.expressionCreator = expressionCreator;
+	}
+
+	public Context mustBreak(){
+		this.neededBreaks++;
+		this.breakTargets++;
+		return this;
+	}
+
+	public Context canBreak() {
+		this.breakTargets++;
+		return this;
+	}
+
+	public Context canContinue() {
+		this.continueTargets++;
+		return this;
+	}
 	SimpleSingleNoFallThroughStatement createBreak(RandomGenerator randomGenerator, VarsEntry varsEntry) {
 		if (this.neededBreaks > 0 && this.neededContinues > 0) {
 			throw new IllegalStateException("Can't both break and continue in the same statement");
@@ -48,8 +69,14 @@ class Context {
 		}
 	}
 
+	public long cache() {
+		return (long) this.neededBreaks << 32 | this.neededContinues;
+	}
+
 	long partial(RandomGenerator rng, double i) {
-		long cache = (long) this.neededBreaks << 32 | this.neededContinues;
+		long cache = this.cache();
+
+		assert i > 0;
 
 		// splits the breaks and continues
 		if (i > 1) {
@@ -60,7 +87,7 @@ class Context {
 		return cache;
 	}
 
-	long restore(long cache) {
+	public long restore(long cache) {
 		this.neededBreaks = (int) (cache >> 32);
 		this.neededContinues = (int) cache;
 
@@ -94,8 +121,8 @@ class Context {
 	}
 
 	@SuppressWarnings("unchecked")
-	List<? extends SimpleSingleNoFallThroughStatement>[] splitBreakOuts(
-		Random random,
+	public List<? extends SimpleSingleNoFallThroughStatement>[] splitBreakOuts(
+		RandomGenerator random,
 		List<? extends SimpleSingleNoFallThroughStatement> breakOuts,
 		boolean needsBreak,
 		boolean canHaveBreaks,

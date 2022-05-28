@@ -53,7 +53,7 @@ public class ExpressionCreator {
 	}
 
 
-	Expression createExpression(Type targetType, VarsEntry vars) {
+	public Expression createExpression(Type targetType, VarsEntry vars) {
 		return builder -> this.random(targetType, builder);
 	}
 
@@ -112,7 +112,7 @@ public class ExpressionCreator {
 		return builder -> builder.append("new Random().nextBoolean()");
 	}
 
-	Expression buildCondition(Var var) {
+	public Expression buildCondition(Var var) {
 		if (var.type() instanceof PrimitiveTypes primitiveType) {
 			if (primitiveType == PrimitiveTypes.BOOLEAN) {
 				return builder -> builder.append(this.random.nextBoolean() ? "!" : "").append(var.name());
@@ -194,7 +194,7 @@ public class ExpressionCreator {
 		return DEFAULT;
 	}
 
-	Expression buildIncrement(Var var) {
+	public Expression buildIncrement(Var var) {
 		Expression value;
 		if (var.type() instanceof PrimitiveTypes primitiveType) {
 			if (!isPrimitiveNumerical(primitiveType)) {

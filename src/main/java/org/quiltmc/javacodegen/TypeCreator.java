@@ -30,7 +30,7 @@ public final class TypeCreator {
 		return (ArrayType) ArrayType.ofDepth(this.createType(), Math.max(1, this.random.nextInt(4)));
 	}
 
-	Type createNumericalType() {
+	public Type createNumericalType() {
 		return switch (this.random.nextInt(10)) {
 			case 0, 1, 2, 3, 4, 5, 6, 7, 9 -> this.createNumericalPrimitiveType();
 			case 8 -> this.createNumericalPrimitiveType();// .Box();
