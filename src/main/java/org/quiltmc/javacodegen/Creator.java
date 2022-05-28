@@ -120,9 +120,7 @@ public class Creator {
 				case 16, 17 -> completesNormally // foreach always completes normally
 					? this.createForEachStatement(context, params, vars)
 					: this.createForStatement(false, context, params, vars);
-				case 18, 19 -> completesNormally
-					? this.createSwitchStatement(completesNormally, context, params, vars)
-					: this.createIfStatement(completesNormally, context, params, vars);
+				case 18, 19 -> this.createSwitchStatement(completesNormally, context, params, vars);
 
 				default -> throw new IllegalStateException();
 			};
@@ -133,6 +131,8 @@ public class Creator {
 		assert stat.completesNormally() == completesNormally;
 		assert context.breakTargets > 0 || stat.breakOuts().stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
 		assert stat.completesNormally() == (stat.varsEntry() != null);
+		assert stat.varsEntry() == null || stat.varsEntry().isFrozen();
+		assert stat.varsEntry() == null != completesNormally;
 		return stat;
 	}
 
@@ -454,11 +454,37 @@ public class Creator {
 	}
 
 	private Statement createSwitchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		List<Var> integralTypes = inVars != null ? inVars.vars.entrySet().stream()
+		List<Var> integralTypes = inVars.vars.entrySet().stream()
 			.filter(v -> v.getKey().type() instanceof PrimitiveTypes pt && pt.integralType() && v.getValue().isDefiniteAssigned())
-			.map(Map.Entry::getKey).toList() : List.of();
+			.map(Map.Entry::getKey).toList();
 
-		int branchAmt = 1 + this.poisson(3);
+		boolean lastCompletesNormally;
+		boolean includeDefault;
+		int branchAmt;
+		if (completesNormally) {
+			context.breakTargets++;
+			if (this.random.nextBoolean() && !context.needsBreakOuts()) {
+				// allow there to be no branches
+				branchAmt = this.poisson(3);
+				lastCompletesNormally = true;
+				includeDefault = false;
+			} else {
+				branchAmt = this.poisson(3) + 1;
+				if (this.random.nextBoolean()) {
+					lastCompletesNormally = true;
+					includeDefault = this.random.nextBoolean();
+				} else { // make sure we have some breaks
+					context.neededBreaks++;
+					lastCompletesNormally = false;
+					includeDefault = true;
+				}
+			}
+		} else {
+			branchAmt = this.poisson(3) + 1;
+			lastCompletesNormally = false;
+			includeDefault = true;
+		}
+		long preCache = context.partial(this.random, 0); // cache the initial context
 
 		params.div(Math.sqrt(branchAmt));
 
@@ -468,47 +494,81 @@ public class Creator {
 			type = PrimitiveTypes.INT;
 			expression = new LiteralExpression(type, 10000);
 		} else {
-			Var var = integralTypes.get(random.nextInt(integralTypes.size()));
+			Var var = integralTypes.get(this.random.nextInt(integralTypes.size()));
 			type = var.type();
 			expression = new VariableExpression(var);
 		}
 
 		List<Expression> exprsAll = new ArrayList<>();
 
+		VarsEntry previousCaseVars = VarsEntry.never();
 		List<SwitchStatement.CaseBranch> caseBranches = new ArrayList<>();
-		for (int i = 0; i < branchAmt; i++) {
-			int caseAmt = random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1;
+		List<SimpleSingleNoFallThroughStatement> allBreakOuts = new ArrayList<>();
+		int needsDefault = includeDefault ? this.random.nextInt(branchAmt) + 1 : -1;
+
+		for (int i = branchAmt; i > 0; i--) {
+			int caseAmt = this.random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1;
+			long cache = context.partial(this.random, i);
+			VarsEntry scopeInVars = VarsEntry.merge(inVars, previousCaseVars); // we don't care about variable names (yet)
+			boolean shouldCaseCompleteNormally = i == 1 ? lastCompletesNormally : completesNormally && this.random.nextBoolean();
 
 			List<Expression> caseExprs = new ArrayList<>();
-			for (int j = 0; j < caseAmt; j++) {
-				LiteralExpression litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
-				// FIXME: this is unbelievably bad
-				while (exprsAll.contains(litex)) {
-					litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
-				}
+			if (i == needsDefault) {
+				caseExprs.add(SwitchStatement.DEFAULT);
+			} else {
+				for (int j = 0; j < caseAmt; j++) {
+					LiteralExpression litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
+					// FIXME: this is unbelievably bad
+					while (exprsAll.contains(litex)) {
+						litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
+					}
 
-				caseExprs.add(litex);
-				exprsAll.add(litex);
+					caseExprs.add(litex);
+					exprsAll.add(litex);
+				}
 			}
 
-			caseBranches.add(new SwitchStatement.CaseBranch(caseExprs,
-				this.createMaybeScope(i == branchAmt - 1 || this.random.nextBoolean(), true, context, params, inVars)
-			));
+			scopeInVars.freeze();
+
+			List<? extends Statement> statements;
+			if (this.random.nextBoolean()) {
+				// create scope, and unbox it
+				Scope fakeScope = this.createScope(shouldCaseCompleteNormally, false, context, params, scopeInVars);
+				statements = fakeScope.statements();
+			} else {
+				// single statement (maybe a scope)
+				statements = List.of(this.createMaybeScope(shouldCaseCompleteNormally, true, context, params, scopeInVars));
+			}
+			if (!statements.isEmpty()) {
+				previousCaseVars = statements.get(statements.size() - 1).varsEntry();
+			}
+
+			caseBranches.add(new SwitchStatement.CaseBranch(caseExprs, statements));
+
+			context.restore(cache);
+			for (Statement statement : statements) {
+				var subBreakOuts = statement.breakOuts();
+				if (subBreakOuts != null) {
+					context.applyBreakOuts(subBreakOuts);
+					allBreakOuts.addAll(subBreakOuts);
+				}
+			}
 		}
 
-		var outVars = VarsEntry.merge(inVars, caseBranches.get(caseBranches.size() - 1).statement().varsEntry());
-
+		context.restore(preCache);
+		var breakOuts = context.splitBreakOuts(
+			this.random, applyScopesToBreakOut(inVars, allBreakOuts),
+			completesNormally && !lastCompletesNormally, completesNormally, false);
 
 		return new SwitchStatement(
 			expression,
 			caseBranches,
-			outVars,
-			caseBranches.stream()
-				.map(SwitchStatement.CaseBranch::statement)
-				.map(Statement::breakOuts)
-				.filter(Objects::nonNull)
-				.flatMap(List::stream)
-				.toList()
+			includeDefault,
+			breakOuts[1],
+			completesNormally
+				? VarsEntry.merge(VarsEntry.merge(inVars, previousCaseVars), mergeBreakOutVars(breakOuts[1]))
+				: VarsEntry.never(),
+			breakOuts[0]
 		);
 	}
 
@@ -549,7 +609,7 @@ public class Creator {
 	}
 
 	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		int tryCatchFinallyCase = this.random.nextInt(3); // 0 => only catch, 1 => only finally
+		int tryCatchFinallyCase = 0;// this.random.nextInt(3); // 0 => only catch, 1 => only finally
 
 		boolean tryComplete = completesNormally;
 		boolean catchComplete = completesNormally;
@@ -595,7 +655,7 @@ public class Creator {
 
 		VarsEntry vars = inVars;
 		Expression resource = null;
-		if (random.nextInt(3) == 0) {
+		if (this.random.nextInt(3) == 0) {
 			vars = new VarsEntry(inVars);
 			Var var = new Var(vars.nextName(), BasicType.SCANNER, FinalType.IMPLICIT_FINAL);
 			vars.create(var, true);
@@ -815,7 +875,7 @@ public class Creator {
 		assert inVars.isFrozen();
 		// can't have an empty scope if we are not supposed to complete normally,
 		// or if we need to have any breaks
-		int targetSize = params.targetSize(this.random) + (completesNormally && context.canBeSingle(true) ? 0 : 1);
+		int targetSize = params.targetSize(this.random) + (completesNormally && !context.needsBreakOuts() ? 0 : 1);
 		if (targetSize == 0) {
 			return new Scope(List.of(), inVars, List.of());
 		}
@@ -826,7 +886,7 @@ public class Creator {
 		Params sub = params.div(Math.sqrt(targetSize));
 
 		boolean stolenBreak = false;
-		if (!completesNormally && context.neededBreaks > 0 && random.nextBoolean()) {
+		if (!completesNormally && context.neededBreaks > 0 && this.random.nextBoolean()) {
 			context.neededBreaks--;
 			stolenBreak = true;
 		}

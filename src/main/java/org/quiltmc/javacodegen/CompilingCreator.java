@@ -49,7 +49,7 @@ public final class CompilingCreator {
 					VarsEntry.empty()
 				);
 
-				assert context.canBeSingle(true);
+				assert !context.needsBreakOuts();
 				assert context.continueTargets == 0;
 				assert context.breakTargets == 0;
 				assert statement.breakOuts().stream().allMatch(s -> {
@@ -91,7 +91,7 @@ public final class CompilingCreator {
 			System.out.println(s);
 		}
 
-//		System.exit(0);
+		//System.exit(0);
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()

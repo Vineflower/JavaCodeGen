@@ -145,14 +145,14 @@ class Context {
 				}
 			}
 
-
 			if (canHaveBreaks) {
-				neededBreaks--; // update for assert at the end
 				List<SimpleSingleNoFallThroughStatement> fakeBreaks = new ArrayList<>();
 				breaks.removeIf(s ->
 					WrappedBreakOutStatement.isDead(s) && fakeBreaks.add(s) // add always returns true
 				);
+				assert breaks.size() >= this.neededBreaks;
 				if (needsBreak) {
+					neededBreaks--; // update for assert at the end
 					this.neededBreaks--;
 					int x = random.nextInt(breaks.size() - this.neededBreaks); // TODO: this is not great
 					for (int i = 0; i < breaks.size() - this.neededBreaks; ) {
@@ -261,5 +261,9 @@ class Context {
 			assert continueTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Continue);
 			return new List[]{remaining, breaks, continues};
 		}
+	}
+
+	public boolean needsBreakOuts() {
+		return this.neededBreaks > 0 || this.neededContinues > 0;
 	}
 }
