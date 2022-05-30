@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.random.RandomGenerator;
 
 public class ExpressionCreator {
 	private final Random random;
@@ -228,7 +229,7 @@ public class ExpressionCreator {
 		return builder -> builder.append(var.name()).append(" ").append(incr).append(" ").append(val);
 	}
 
-	LiteralExpression createPrimitiveConstantExpression(PrimitiveTypes primitiveType) {
+	public LiteralExpression createPrimitiveConstantExpression(PrimitiveTypes primitiveType) {
 		return new LiteralExpression(primitiveType, switch (primitiveType) {
 			case BOOLEAN -> this.random.nextBoolean() ? "true" : "false";
 			case BYTE -> "(byte)" + this.random.nextInt(Byte.MIN_VALUE, Byte.MAX_VALUE + 1) + "";
@@ -239,6 +240,41 @@ public class ExpressionCreator {
 			case FLOAT -> new DecimalFormat("###.##", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(200 * this.random.nextFloat() - 50) + "F";
 			case DOUBLE -> new DecimalFormat("###.##", DecimalFormatSymbols.getInstance(Locale.ROOT)).format(200 * this.random.nextDouble() - 50) + "";
 		});
+	}
+
+	public LiteralExpression createRandomString(int size) {
+		int amt = 1 + this.poisson(size);
+
+		StringBuilder buf = new StringBuilder();
+
+		for (int i = amt; i > 0; i--) {
+			int letter = this.random.nextInt(26);
+			boolean lowercase = this.random.nextBoolean();
+
+			String gen = String.valueOf((char)(65 + letter));
+
+			if (lowercase) {
+				gen = gen.toLowerCase(Locale.ROOT);
+			}
+
+			buf.append(gen);
+		}
+
+		return new LiteralExpression(BasicType.STRING, "\"" + buf.toString() + "\"");
+	}
+
+	private int poisson(double size) {
+		return poisson(size, this.random);
+	}
+
+	private static int poisson(double size, RandomGenerator randomGenerator) {
+		int res = 0;
+		double p = 1;
+		double l = Math.exp(-size);
+		while ((p *= randomGenerator.nextDouble()) >= l) {
+			res++;
+		}
+		return res;
 	}
 
 	static boolean isPrimitiveNumerical(PrimitiveTypes type) {

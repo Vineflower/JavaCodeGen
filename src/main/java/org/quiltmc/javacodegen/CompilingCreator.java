@@ -15,7 +15,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 50;
+		int count = 500;
 
 		Path path = deleteDirs();
 
@@ -37,7 +37,7 @@ public final class CompilingCreator {
 				VarsEntry.resetId();
 
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(seed)).method(20);
+				Statement statement = (new Creator(seed)).method(8);
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
@@ -73,7 +73,7 @@ public final class CompilingCreator {
 			System.out.println(s);
 		}
 
-		System.exit(0);
+//		System.exit(0);
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()

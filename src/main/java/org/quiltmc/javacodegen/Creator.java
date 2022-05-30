@@ -1,9 +1,7 @@
 package org.quiltmc.javacodegen;
 
 import org.jetbrains.annotations.NotNull;
-import org.quiltmc.javacodegen.creating.CreateUtils;
-import org.quiltmc.javacodegen.creating.ForCreator;
-import org.quiltmc.javacodegen.creating.ForEachCreator;
+import org.quiltmc.javacodegen.creating.*;
 import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.expression.LiteralExpression;
 import org.quiltmc.javacodegen.expression.VariableExpression;
@@ -17,6 +15,7 @@ import org.quiltmc.javacodegen.vars.Var;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.random.RandomGenerator;
 import java.util.stream.Stream;
 
@@ -305,10 +304,46 @@ public class Creator {
 		return breakOut.stream().map(s -> applyScopeToBreakOut(s, inVars)).toList();
 	}
 
+	public SwitchContext getNextSwitchContext(SwitchContext old) {
+		if (old instanceof StringSwitchContext) {
+			return new IntegralSwitchContext();
+		} else if (old instanceof IntegralSwitchContext) {
+			return null;
+		} else {
+			return null;
+		}
+	}
+
+	public SwitchContext randomSwitchContext() {
+		return switch (random.nextInt(2)) {
+			case 0 -> new StringSwitchContext();
+			case 1 -> new IntegralSwitchContext();
+			default -> throw new IllegalStateException();
+		};
+	}
+
 	private Statement createSwitchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		List<Var> integralTypes = inVars.vars.entrySet().stream()
-			.filter(v -> v.getKey().type() instanceof PrimitiveTypes pt && pt.integralType() && v.getValue().isDefiniteAssigned())
-			.map(Map.Entry::getKey).toList();
+
+		SwitchContext switchContext = randomSwitchContext();
+		List<Var> foundVars = new ArrayList<>();
+
+		while (foundVars.isEmpty()) {
+			if (switchContext == null) {
+				switchContext = randomSwitchContext();
+				break;
+			}
+
+			Predicate<Type> typeFilter = switchContext.buildFilter();
+			foundVars = inVars.vars.entrySet().stream()
+				.filter(v -> typeFilter.test(v.getKey().type()) && v.getValue().isDefiniteAssigned())
+				.map(Map.Entry::getKey).toList();
+
+			if (foundVars.isEmpty()) {
+				switchContext = getNextSwitchContext(switchContext);
+			}
+		}
+
+		// TODO: move into a creator class
 
 		boolean lastCompletesNormally;
 		boolean includeDefault;
@@ -336,18 +371,21 @@ public class Creator {
 			lastCompletesNormally = false;
 			includeDefault = true;
 		}
+		branchAmt = switchContext.modifyBranchAmt(branchAmt); // TODO: default
 		long preCache = context.cache(); // cache the initial context
 
 		params.div(Math.sqrt(branchAmt));
 
 		Type type;
 		Expression expression;
-		if (integralTypes.isEmpty()) {
-			type = PrimitiveTypes.INT;
-			expression = new LiteralExpression(type, 10000);
+		if (foundVars.isEmpty()) {
+			type = switchContext.getType(true);
+			expression = switchContext.createDefault();
 		} else {
-			Var var = integralTypes.get(this.random.nextInt(integralTypes.size()));
-			type = var.type();
+			Var var = foundVars.get(this.random.nextInt(foundVars.size()));
+			switchContext.setVar(var);
+
+			type = switchContext.getType(false);
 			expression = new VariableExpression(var);
 		}
 
@@ -359,25 +397,23 @@ public class Creator {
 		int needsDefault = includeDefault ? this.random.nextInt(branchAmt) + 1 : -1;
 
 		for (int i = branchAmt; i > 0; i--) {
-			int caseAmt = this.random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1;
+			int caseAmt = switchContext.modifyCaseAmt(this.random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1);
+			int defaultIdx = this.random.nextInt(caseAmt);
 			long cache = context.partial(this.random, i);
 			VarsEntry scopeInVars = VarsEntry.merge(inVars, previousCaseVars); // we don't care about variable names (yet)
 			boolean shouldCaseCompleteNormally = i == 1 ? lastCompletesNormally : completesNormally && this.random.nextBoolean();
 
 			List<Expression> caseExprs = new ArrayList<>();
-			if (i == needsDefault) {
-				caseExprs.add(SwitchStatement.DEFAULT);
-			} else {
-				for (int j = 0; j < caseAmt; j++) {
-					LiteralExpression litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
-					// FIXME: this is unbelievably bad
-					while (exprsAll.contains(litex)) {
-						litex = this.expressionCreator.createPrimitiveConstantExpression((PrimitiveTypes) type);
-					}
 
-					caseExprs.add(litex);
-					exprsAll.add(litex);
+			for (int j = 0; j < caseAmt; j++) {
+				LiteralExpression litex = switchContext.makeCaseLiteral(this.expressionCreator);
+				// FIXME: this is unbelievably bad
+				while (exprsAll.contains(litex)) {
+					litex = switchContext.makeCaseLiteral(this.expressionCreator);
 				}
+
+				caseExprs.add(i == needsDefault && j == defaultIdx ? SwitchStatement.DEFAULT : litex);
+				exprsAll.add(litex);
 			}
 
 			scopeInVars.freeze();
@@ -461,7 +497,7 @@ public class Creator {
 	}
 
 	private Statement createTryCatchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		int tryCatchFinallyCase = 0;// this.random.nextInt(3); // 0 => only catch, 1 => only finally
+		int tryCatchFinallyCase = this.random.nextInt(3); // 0 => only catch, 1 => only finally
 
 		boolean tryComplete = completesNormally;
 		boolean catchComplete = completesNormally;
