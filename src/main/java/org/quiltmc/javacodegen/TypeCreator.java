@@ -16,12 +16,13 @@ public final class TypeCreator {
 
 
 	Type createType() {
-		return switch (this.random.nextInt(20)) {
+		return switch (this.random.nextInt(23)) {
 			case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> this.createPrimitiveType();
 			case 10 -> this.createPrimitiveType(); //.Box();
 			case 11, 12 -> this.createArrayType();
 			case 13, 14, 15 -> BasicType.OBJECT;
 			case 16, 17, 18, 19 -> BasicType.STRING;
+			case 20, 21, 22 -> BasicType.ELEMENT_TYPE;
 			default -> throw new IllegalStateException();
 		};
 	}

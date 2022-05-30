@@ -39,6 +39,8 @@ public class ExpressionCreator {
 		} else if (type instanceof BasicType basicType) {
 			if (type == BasicType.STRING) {
 				builder.append("\"Hi!\"");
+			} else if (type == BasicType.ELEMENT_TYPE) {
+				builder.append("ElementType.METHOD");
 			} else {
 				builder.append("null");
 			}
@@ -275,6 +277,10 @@ public class ExpressionCreator {
 			res++;
 		}
 		return res;
+	}
+
+	public Random getRandom() {
+		return random;
 	}
 
 	static boolean isPrimitiveNumerical(PrimitiveTypes type) {

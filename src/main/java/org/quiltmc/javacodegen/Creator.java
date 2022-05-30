@@ -307,6 +307,8 @@ public class Creator {
 	public SwitchContext getNextSwitchContext(SwitchContext old) {
 		if (old instanceof StringSwitchContext) {
 			return new IntegralSwitchContext();
+		} else if (old instanceof EnumSwitchContext) {
+			return new StringSwitchContext();
 		} else if (old instanceof IntegralSwitchContext) {
 			return null;
 		} else {
@@ -315,9 +317,10 @@ public class Creator {
 	}
 
 	public SwitchContext randomSwitchContext() {
-		return switch (random.nextInt(2)) {
+		return switch (random.nextInt(3)) {
 			case 0 -> new StringSwitchContext();
 			case 1 -> new IntegralSwitchContext();
+			case 2 -> new EnumSwitchContext();
 			default -> throw new IllegalStateException();
 		};
 	}

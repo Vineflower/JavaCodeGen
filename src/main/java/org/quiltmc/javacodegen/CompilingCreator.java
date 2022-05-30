@@ -41,6 +41,7 @@ public final class CompilingCreator {
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
+				stringBuilder.append("import java.lang.annotation.*;\n");
 
 				stringBuilder.append("class FuzzedClass_").append(i).append(" {\n");
 				stringBuilder.append("// seed: ").append(seed).append("\n");
