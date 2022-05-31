@@ -1,11 +1,12 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.List;
 
 public record IfStatement(
-	Statement condition,
+	Expression condition,
 	Statement ifTrue,
 	Statement ifFalse,
 	VarsEntry varsEntry,
@@ -22,10 +23,9 @@ public record IfStatement(
 
 	@Override
 	public void javaLike(StringBuilder builder, String indentation) {
-		StringBuilder cond = new StringBuilder();
-		this.condition.javaLike(cond, "");
-
-		builder.append(indentation).append("if (").append(cond.toString().trim()).append(") ").append('\n');
+		builder.append(indentation).append("if (");
+		this.condition.javaLike(builder);
+		builder.append(") ").append('\n');
 		this.ifTrue.javaLike(builder, indentation + (this.ifTrue instanceof Scope ? "" : "\t"));
 		if (this.ifFalse != null) {
 			builder.append(indentation).append("else \n");

@@ -94,7 +94,7 @@ public class Context {
 		return cache;
 	}
 
-	void applyBreakOuts(List<? extends Statement> breakOuts) {
+	public void applyBreakOuts(List<? extends Statement> breakOuts) {
 		for (Statement breakOut : breakOuts) {
 			if (WrappedBreakOutStatement.isDead(breakOut)) {
 				continue;

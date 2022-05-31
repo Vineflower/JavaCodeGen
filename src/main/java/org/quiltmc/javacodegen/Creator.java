@@ -113,7 +113,7 @@ public class Creator {
 		} else {
 			stat = switch (this.random.nextInt(20)) {
 				case 0, 1 -> LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars);
-				case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars);
+				case 2, 3, 4 -> IfCreator.createIfStatement(this, this.random, completesNormally, context, params, vars);
 				case 5, 6 -> WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars);
 				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
 				case 9 -> this.createScope(completesNormally, false, context, params, vars);
@@ -136,73 +136,7 @@ public class Creator {
 		return stat;
 	}
 
-	private IfStatement createIfStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		// fixme: conditions can introduce new variables
-		var condition = new ConditionStatement(inVars, this.expressionCreator.buildCondition(inVars));
-
-
-		// TODO: expressions for all of these
-		if (completesNormally && this.random.nextInt(params.size < 5 ? 2 : 3) == 0) {
-
-			var ifBlock = this.createMaybeScope(this.random.nextInt(3) != 0, false, context, params, inVars);
-
-			var outVars = ifBlock.completesNormally() ? VarsEntry.merge(inVars, ifBlock.varsEntry()) : inVars;
-
-			return new IfStatement(
-				condition,
-				ifBlock,
-				null,
-				outVars,
-				ifBlock.breakOuts()
-			);
-		}
-
-		var sub = params.div(1.5);
-		if (!completesNormally || this.random.nextInt(3) == 0) {
-			long cache = context.partial(this.random, 2);
-
-			var ifBlock = this.createMaybeScope(false, false, context, sub, inVars);
-
-			context.restore(cache);
-			context.applyBreakOuts(ifBlock.breakOuts());
-
-			var elseBlock = this.createMaybeScope(completesNormally, false, context, sub, inVars);
-
-			var breakOuts = mergeBreakOuts(ifBlock.breakOuts(), elseBlock.breakOuts());
-
-			return new IfStatement(
-				condition,
-				ifBlock,
-				elseBlock,
-				completesNormally ? elseBlock.varsEntry() : VarsEntry.never(),
-				breakOuts
-			);
-		} else {
-			long cache = context.partial(this.random, 2);
-
-			var ifBlock = this.createMaybeScope(true, false, context, sub, inVars);
-
-			context.restore(cache);
-			context.applyBreakOuts(ifBlock.breakOuts());
-
-			var elseBlock =
-				this.createMaybeScope(this.random.nextInt(3) != 0, false, context, sub, inVars);
-
-			var breakOuts = mergeBreakOuts(ifBlock.breakOuts(), elseBlock.breakOuts());
-
-			return new IfStatement(
-				condition,
-				ifBlock,
-				elseBlock,
-				elseBlock.completesNormally()
-					? VarsEntry.merge(ifBlock.varsEntry(), elseBlock.varsEntry())
-					: ifBlock.varsEntry(),
-				breakOuts
-			);
-		}
-	}
-
-	private static List<? extends SimpleSingleNoFallThroughStatement> mergeBreakOuts(List<? extends SimpleSingleNoFallThroughStatement> as, List<? extends SimpleSingleNoFallThroughStatement> bs) {
+	public static List<? extends SimpleSingleNoFallThroughStatement> mergeBreakOuts(List<? extends SimpleSingleNoFallThroughStatement> as, List<? extends SimpleSingleNoFallThroughStatement> bs) {
 		if (as == null) {
 			return bs;
 		} else if (bs == null) {
