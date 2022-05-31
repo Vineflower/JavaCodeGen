@@ -1,17 +1,18 @@
 package org.quiltmc.javacodegen.statement;
 
+import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.util.List;
 
 public record WhileStatement(
-	Statement condition,
+	Expression condition,
 	Statement block,
 	List<? extends SimpleSingleNoFallThroughStatement> breaks,
 	List<? extends SimpleSingleNoFallThroughStatement> continues,
 	VarsEntry varsEntry,
 	List<? extends SimpleSingleNoFallThroughStatement> breakOuts
-) implements Continuable{
+) implements Continuable {
 	public WhileStatement {
 		VarsEntry.freeze(varsEntry);
 		this.initMarks(breaks, continues);
@@ -19,7 +20,7 @@ public record WhileStatement(
 
 	@Override
 	public boolean completesNormally() {
-		return true;// TODO merge with "WhileTrue"
+		return this.condition != null || this.hasBreak();
 	}
 
 
@@ -28,10 +29,15 @@ public record WhileStatement(
 		// check if we need a label
 		this.addLabel(builder, indentation);
 
-		StringBuilder cond = new StringBuilder();
-		this.condition.javaLike(cond, "");
+		builder.append(indentation).append("while (");
 
-		builder.append(indentation).append("while (").append(cond.toString().trim()).append(") \n");
+		if (this.condition != null) {
+			this.condition.javaLike(builder);
+		} else {
+			builder.append("true");
+		}
+
+		builder.append(") \n");
 		this.block.javaLike(builder, indentation + (this.block instanceof Scope ? "" : "\t"));
 		this.addDebugVarInfo(builder, indentation);
 	}

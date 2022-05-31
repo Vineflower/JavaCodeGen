@@ -99,7 +99,7 @@ public class ExpressionCreator {
 		);
 	}
 
-	Expression buildCondition(VarsEntry vars) {
+	public Expression buildCondition(VarsEntry vars) {
 		if (vars != null && !vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
 			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {

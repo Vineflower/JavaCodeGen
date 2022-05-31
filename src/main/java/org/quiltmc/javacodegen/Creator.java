@@ -114,7 +114,7 @@ public class Creator {
 			stat = switch (this.random.nextInt(20)) {
 				case 0, 1 -> LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars);
 				case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars);
-				case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars);
+				case 5, 6 -> WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars);
 				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
 				case 9 -> this.createScope(completesNormally, false, context, params, vars);
 				case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars);
@@ -214,79 +214,6 @@ public class Creator {
 			return stats;
 		}
 	}
-
-	private Statement createWhileStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		if (completesNormally) {
-			if (this.random.nextInt(4) == 0) {
-				// while true with breaks
-				context.neededBreaks++;
-				context.breakTargets++;
-				context.continueTargets++;
-
-				var body = CreateUtils.createMaybeScopeRestoring(this, this.random, context, params, inVars);
-
-				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
-					this.random, body.breakOuts(), true, true, true);
-
-				return new WhileTrueStatement(
-					body,
-					breakOuts[1],
-					breakOuts[2],
-					VarsEntry.applyScopeTo(inVars, mergeBreakOutVars(breakOuts[1])),
-					applyScopesToBreakOut(inVars, breakOuts[0])
-				);
-			} else {
-				// while with condition
-				context.breakTargets++;
-				context.continueTargets++;
-
-				// FIXME: conditions can introduce new variables
-				var condition = new ConditionStatement(inVars, this.expressionCreator.buildCondition(inVars));
-
-
-				long cache = context.cache();
-				// doesn't matter if the body completes or not
-				var body = this.createMaybeScope(
-					this.random.nextInt(5) == 0, false, context, params, inVars);
-				context.restore(cache); // needed for split breakouts
-
-				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
-					this.random, body.breakOuts(), false, true, true);
-
-				return new WhileStatement(
-					condition,
-					body,
-					breakOuts[1],
-					breakOuts[2],
-					VarsEntry.merge(
-						VarsEntry.applyScopeTo(inVars, VarsEntry.merge(mergeBreakOutVars(breakOuts[1]), body.varsEntry())),
-						inVars
-					),
-					applyScopesToBreakOut(inVars, breakOuts[0])
-				);
-			}
-		} else {
-			// while true without any breaks
-			context.continueTargets++;
-
-			// doesn't matter if the body completes or not
-			var body = this.createMaybeScope(
-				this.random.nextInt(5) == 0, false, context, params, inVars);
-			// we dont need breaks, so restoring isn't really needed
-
-			List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
-				this.random, body.breakOuts(), false, false, true);
-
-			return new WhileTrueStatement(
-				body,
-				breakOuts[1],
-				breakOuts[2],
-				VarsEntry.never(),
-				applyScopesToBreakOut(inVars, breakOuts[0])
-			);
-		}
-	}
-
 	public static VarsEntry mergeBreakOutVars(List<? extends SimpleSingleNoFallThroughStatement> breakOut) {
 		VarsEntry vars = VarsEntry.never();
 		if (breakOut != null) {
