@@ -8,7 +8,6 @@ import org.quiltmc.javacodegen.expression.VariableExpression;
 import org.quiltmc.javacodegen.statement.*;
 import org.quiltmc.javacodegen.types.ArrayType;
 import org.quiltmc.javacodegen.types.BasicType;
-import org.quiltmc.javacodegen.types.PrimitiveTypes;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.FinalType;
 import org.quiltmc.javacodegen.vars.Var;
@@ -113,21 +112,19 @@ public class Creator {
 			stat = this.createSingleStatement(completesNormally, allowSingleVarDef, context, vars);
 		} else {
 			stat = switch (this.random.nextInt(20)) {
-				case 0, 9 -> this.createLabeledStatement(completesNormally, context, params, vars);
-				case 1 -> this.createScope(completesNormally, false, context, params, vars);
+				case 0, 1 -> LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars);
 				case 2, 3, 4 -> this.createIfStatement(completesNormally, context, params, vars);
 				case 5, 6 -> this.createWhileStatement(completesNormally, context, params, vars);
 				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
+				case 9 -> this.createScope(completesNormally, false, context, params, vars);
 				case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars);
 				case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars);
 				case 16, 17 -> completesNormally // foreach always completes normally
 					? ForEachCreator.createForEachStatement(this, this.random, context, params, vars)
 					: ForCreator.createForStatement(this, this.random, false, context, params, vars);
 				case 18, 19 -> this.createSwitchStatement(completesNormally, context, params, vars);
-
 				default -> throw new IllegalStateException();
 			};
-
 		}
 
 		assert neededBreaks == 0 || stat.breakOuts().stream().filter(s -> WrappedBreakOutStatement.base(s) instanceof Break && !WrappedBreakOutStatement.isDead(s)).count() >= neededBreaks;
@@ -693,65 +690,6 @@ public class Creator {
 		}
 		// todo: optimize if no wrapping is needed?
 		return new WrappedBreakOutStatement(stat, VarsEntry.applyScopeTo(scopeVars, stat.breakOutVars()));
-	}
-
-	private Statement createLabeledStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-		if (completesNormally) {
-			if (this.random.nextInt(5) == 0) {
-				context.neededBreaks++;
-				context.breakTargets++;
-
-
-				long cache = context.cache();
-				Statement st = this.createStatement(false, false, context, params, inVars);
-
-				if (st instanceof LabelImpossible) {
-					// how?
-					throw new RuntimeException("LabelImpossible");
-				}
-
-				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
-
-				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
-					this.random, st.breakOuts(), true, true, false);
-
-				return new LabeledStatement(
-					st,
-					breakOuts[1],
-					VarsEntry.applyScopeTo(inVars, mergeBreakOutVars(breakOuts[1])),
-					applyScopesToBreakOut(inVars, breakOuts[0])
-				);
-
-			} else {
-				context.breakTargets++;
-
-				long cache = context.cache();
-				Statement st = this.createStatement(true, false, context, params, inVars);
-
-				if (st instanceof LabelImpossible) {
-					throw new RuntimeException("LabelImpossible");
-				}
-
-				context.restore(cache); // needed for split breakouts when "canHaveBreaks" is true
-
-				List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
-					this.random, st.breakOuts(), false, true, false);
-
-				return new LabeledStatement(
-					st,
-					breakOuts[1],
-					VarsEntry.applyScopeTo(inVars, VarsEntry.merge(mergeBreakOutVars(breakOuts[1]), st.varsEntry())),
-					applyScopesToBreakOut(inVars, breakOuts[0])
-				);
-			}
-		} else {
-			// labeled, but no breaks
-			Statement st = this.createStatement(false, false, context, params, inVars);
-			if (st instanceof LabelImpossible) {
-				throw new RuntimeException("LabelImpossible");
-			}
-			return new LabeledStatement(st, List.of(), VarsEntry.never(), applyScopesToBreakOut(inVars, st.breakOuts()));
-		}
 	}
 
 	public Statement createMaybeScope(boolean completesNormally, boolean allowSingleVarDef, Context context, Params params, VarsEntry vars) {
