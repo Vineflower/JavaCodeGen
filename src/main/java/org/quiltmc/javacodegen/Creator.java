@@ -20,22 +20,24 @@ import java.util.stream.Stream;
 
 public class Creator {
 	private final Random random;
+	private final JavaVersion version;
 	private final TypeCreator typeCreator;
 	private final ExpressionCreator expressionCreator;
 
 
-	public Creator(Random random) {
+	public Creator(JavaVersion version, Random random) {
 		this.random = random;
+		this.version = version;
 		this.typeCreator = new TypeCreator(new Random(random.nextLong()));
 		this.expressionCreator = new ExpressionCreator(new Random(random.nextLong()));
 	}
 
-	public Creator(long seed) {
-		this(new Random(seed));
+	public Creator(JavaVersion version, long seed) {
+		this(version, new Random(seed));
 	}
 
 	public Creator() {
-		this(new Random());
+		this(new JavaVersion(17, false), new Random());
 	}
 
 	SimpleSingleCompletingStatement createExpressionStatement(VarsEntry vars, boolean allowSingleVarDef) {
@@ -167,6 +169,8 @@ public class Creator {
 			return new IntegralSwitchContext();
 		} else if (old instanceof EnumSwitchContext) {
 			return new StringSwitchContext();
+		} else if (old instanceof PatternSwitchContext) {
+			return new EnumSwitchContext();
 		} else if (old instanceof IntegralSwitchContext) {
 			return null;
 		} else {
@@ -175,10 +179,11 @@ public class Creator {
 	}
 
 	public SwitchContext randomSwitchContext() {
-		return switch (random.nextInt(3)) {
+		return switch (random.nextInt(4)) {
 			case 0 -> new StringSwitchContext();
 			case 1 -> new IntegralSwitchContext();
 			case 2 -> new EnumSwitchContext();
+			case 3 -> this.version.hasSwitchExpressions() ? new PatternSwitchContext() : new EnumSwitchContext();
 			default -> throw new IllegalStateException();
 		};
 	}
@@ -232,6 +237,8 @@ public class Creator {
 			lastCompletesNormally = false;
 			includeDefault = true;
 		}
+
+		includeDefault = switchContext.modifyIncludesDefault(includeDefault);
 		branchAmt = switchContext.modifyBranchAmt(branchAmt); // TODO: default
 		long preCache = context.cache(); // cache the initial context
 
@@ -255,27 +262,38 @@ public class Creator {
 		VarsEntry previousCaseVars = VarsEntry.never();
 		List<SwitchStatement.CaseBranch> caseBranches = new ArrayList<>();
 		List<SimpleSingleNoFallThroughStatement> allBreakOuts = new ArrayList<>();
-		int needsDefault = includeDefault ? this.random.nextInt(branchAmt) + 1 : -1;
+		int needsDefault = includeDefault ? this.random.nextInt(Math.max(branchAmt, 1)) + 1 : -1;
+		if (includeDefault) {
+			branchAmt = Math.max(branchAmt, 1);
+		}
 
 		for (int i = branchAmt; i > 0; i--) {
 			int caseAmt = switchContext.modifyCaseAmt(this.random.nextInt(3) == 0 ? 1 + this.poisson(3) : 1);
 			int defaultIdx = this.random.nextInt(caseAmt);
 			long cache = context.partial(this.random, i);
 			VarsEntry scopeInVars = VarsEntry.merge(inVars, previousCaseVars); // we don't care about variable names (yet)
-			boolean shouldCaseCompleteNormally = i == 1 ? lastCompletesNormally : completesNormally && this.random.nextBoolean();
 
 			List<Expression> caseExprs = new ArrayList<>();
 
+			scopeInVars = switchContext.mapInvars(scopeInVars);
+
 			for (int j = 0; j < caseAmt; j++) {
+				if (i == needsDefault && j == defaultIdx) {
+					caseExprs.add(SwitchStatement.DEFAULT);
+					continue;
+				}
+
 				LiteralExpression litex = switchContext.makeCaseLiteral(this.expressionCreator);
 				// FIXME: this is unbelievably bad
 				while (exprsAll.contains(litex)) {
 					litex = switchContext.makeCaseLiteral(this.expressionCreator);
 				}
 
-				caseExprs.add(i == needsDefault && j == defaultIdx ? SwitchStatement.DEFAULT : litex);
+				caseExprs.add(litex);
 				exprsAll.add(litex);
 			}
+
+			boolean shouldCaseCompleteNormally = i == 1 ? lastCompletesNormally : completesNormally && switchContext.shouldCaseCompleteNormally(this.random);
 
 			scopeInVars.freeze();
 
@@ -641,7 +659,7 @@ public class Creator {
 	}
 
 	public static void main(String[] args) {
-		Statement statement = (new Creator(-2706962048981605674L)).method(
+		Statement statement = (new Creator(new JavaVersion(17, false), -2706962048981605674L)).method(
 			20
 		);
 		System.out.println(statement);
@@ -656,7 +674,7 @@ public class Creator {
 	}
 
 	public Statement method(int size) {
-		Context context = new Context(this.typeCreator, this.expressionCreator);
+		Context context = new Context(this.version, this.typeCreator, this.expressionCreator);
 		Params params = new Params(size);
 
 		final Scope scope = this.createScope(false, true, context, params, VarsEntry.empty());

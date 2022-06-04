@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.random.RandomGenerator;
 
 public class Context {
+	public final JavaVersion version;
 	public final TypeCreator typeCreator;
 	public final ExpressionCreator expressionCreator;
 	int neededBreaks = 0;
@@ -15,7 +16,8 @@ public class Context {
 	int breakTargets = 0;
 	int continueTargets = 0;
 
-	public Context(TypeCreator typeCreator, ExpressionCreator expressionCreator) {
+	public Context(JavaVersion version, TypeCreator typeCreator, ExpressionCreator expressionCreator) {
+		this.version = version;
 		this.typeCreator = typeCreator;
 		this.expressionCreator = expressionCreator;
 	}

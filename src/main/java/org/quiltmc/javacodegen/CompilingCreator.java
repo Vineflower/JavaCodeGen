@@ -15,7 +15,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 500;
+		int count = 1000;
 
 		Path path = deleteDirs();
 
@@ -31,13 +31,17 @@ public final class CompilingCreator {
 
 		int failedToGenerate = 0;
 		Random seedGenerator = new Random();
+		// Like this for easy debugging
+		long realSeed = seedGenerator.nextLong();
+		System.out.println("Global seed: " + realSeed);
+		seedGenerator = new Random(realSeed);
 
 		for (int i = 0; i < count; i++) {
 			try {
 				VarsEntry.resetId();
 
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(seed)).method(8);
+				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(8);
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
@@ -64,7 +68,7 @@ public final class CompilingCreator {
 		}
 
 		Process exec = Runtime.getRuntime().exec(
-			"javac -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
+			"javac --enable-preview --release 17 -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
 
 		BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
@@ -91,7 +95,7 @@ public final class CompilingCreator {
 			}
 
 			exec = Runtime.getRuntime()
-				.exec("javac -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
+				.exec("javac --enable-preview --release 17 -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
 
 			serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 

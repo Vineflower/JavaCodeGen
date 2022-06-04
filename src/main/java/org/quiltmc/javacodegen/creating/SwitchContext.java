@@ -5,7 +5,9 @@ import org.quiltmc.javacodegen.expression.Expression;
 import org.quiltmc.javacodegen.expression.LiteralExpression;
 import org.quiltmc.javacodegen.types.Type;
 import org.quiltmc.javacodegen.vars.Var;
+import org.quiltmc.javacodegen.vars.VarsEntry;
 
+import java.util.Random;
 import java.util.function.Predicate;
 
 public interface SwitchContext {
@@ -21,6 +23,18 @@ public interface SwitchContext {
 
 	default int modifyBranchAmt(int rawIn) {
 		return rawIn;
+	}
+
+	default VarsEntry mapInvars(VarsEntry scopeInVars) {
+		return scopeInVars;
+	}
+
+	default boolean shouldCaseCompleteNormally(Random random) {
+		return random.nextBoolean();
+	}
+
+	default boolean modifyIncludesDefault(boolean includeDefault) {
+		return includeDefault;
 	}
 
 	LiteralExpression makeCaseLiteral(ExpressionCreator expressionCreator);
