@@ -35,7 +35,7 @@ public class ForCreator {
 
 	public static ForStatement createInfiniteForWithBreaks(Creator creator, RandomGenerator rng, Context context, Creator.Params params, VarsEntry inVars) {
 		// infinite for with breaks
-		context.mustBreak().canContinue();
+		context.catchesUnlabeledBreaks().mustBreak().canContinue();
 
 		Type outerType = context.typeCreator.createNumericalType();
 		VarsEntry vars = new VarsEntry(inVars);
@@ -63,7 +63,7 @@ public class ForCreator {
 
 	public static ForStatement createFiniteFor(Creator creator, RandomGenerator rng, Context context, Creator.Params params, VarsEntry inVars) {
 		// normal for
-		context.canBreak().canContinue();
+		context.catchesUnlabeledBreaks().canBreak().canContinue();
 
 
 		Type outerType = context.typeCreator.createNumericalType();
@@ -91,7 +91,7 @@ public class ForCreator {
 
 	public static ForStatement createInfiniteForWithoutBreaks(Creator creator, RandomGenerator rng, Context context, Creator.Params params, VarsEntry inVars) {
 		// infinite for without breaks
-		context.canContinue();
+		context.catchesUnlabeledBreaks().canContinue();
 
 		Type outerType = context.typeCreator.createNumericalType();
 		VarsEntry vars = new VarsEntry(inVars);

@@ -13,7 +13,7 @@ import static org.quiltmc.javacodegen.Creator.applyScopesToBreakOut;
 import static org.quiltmc.javacodegen.Creator.mergeBreakOutVars;
 
 public class WhileCreator {
-	public static Statement createWhileStatement(Creator creator, RandomGenerator rng, boolean completesNormally, Context context, Creator.Params params, VarsEntry inVars) {
+	public static WhileStatement createWhileStatement(Creator creator, RandomGenerator rng, boolean completesNormally, Context context, Creator.Params params, VarsEntry inVars) {
 		// TODO: weirder for loops (i.e. init, cond, incr not using the same var)
 
 		if (completesNormally) {
@@ -34,7 +34,7 @@ public class WhileCreator {
 		Creator.Params params,
 		VarsEntry inVars) {
 		// infinite for with breaks
-		context.mustBreak().canContinue();
+		context.catchesUnlabeledBreaks().mustBreak().canContinue();
 
 		var body = CreateUtils.createMaybeScopeRestoring(creator, rng, context, params, inVars);
 
@@ -59,7 +59,7 @@ public class WhileCreator {
 		Creator.Params params,
 		VarsEntry inVars) {
 		// normal for
-		context.canBreak().canContinue();
+		context.catchesUnlabeledBreaks().canBreak().canContinue();
 
 
 		final Expression condition = context.expressionCreator.buildCondition(inVars);
@@ -87,7 +87,7 @@ public class WhileCreator {
 		VarsEntry inVars
 	) {
 		// infinite for without breaks
-		context.canContinue();
+		context.catchesUnlabeledBreaks().canContinue();
 
 		var body = CreateUtils.createMaybeScopeRestoring(creator, rng, context, params, inVars);
 

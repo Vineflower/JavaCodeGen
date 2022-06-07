@@ -12,7 +12,7 @@ public class Context {
 	public final TypeCreator typeCreator;
 	public final ExpressionCreator expressionCreator;
 	int neededBreaks = 0;
-	int neededContinues = 0; // should always be 0
+	private int neededContinues = 0; // should always be 0
 	int breakTargets = 0;
 	int continueTargets = 0;
 	private final Creator.Params params; // original params for data about code creation
@@ -22,6 +22,14 @@ public class Context {
 		this.typeCreator = typeCreator;
 		this.expressionCreator = expressionCreator;
 		this.params = params;
+	}
+
+	public Context catchesUnlabeledBreaks() {
+		if (this.params.createLabels() && this.neededBreaks > 0){
+			throw new IllegalStateException("Required break is inaccessible");
+		}
+
+		return this;
 	}
 
 	public Context mustBreak(){
@@ -50,20 +58,22 @@ public class Context {
 		} else if (this.neededContinues > 1) {
 			throw new IllegalStateException("Can't have more than one continue in the same statement");
 		} else if (this.neededBreaks > 0) {
-			return new Break(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
+			return new Break(!this.params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 		} else if (this.neededContinues > 0) {
-			return new Continue(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
+			return new Continue(!this.params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 		} else {
-			int count = this.breakTargets + this.continueTargets + 2;
+			int bt = this.params.createLabels() || this.breakTargets == 0 ? this.breakTargets : 1;
+			int ct = this.params.createLabels() || this.continueTargets == 0 ? this.continueTargets : 1;
+			int count = bt + ct + 2;
 			int target = randomGenerator.nextInt(count) - 2;
 			if (target == -2) {
 				return new Return(varsEntry);
 			} else if (target == -1) {
 				return new Throw(varsEntry);
-			} else if (target < this.breakTargets) {
-				return new Break(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
+			} else if (target < bt) {
+				return new Break(!this.params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 			} else {
-				return new Continue(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
+				return new Continue(!this.params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 			}
 		}
 	}
@@ -283,7 +293,7 @@ public class Context {
 					}
 				}
 
-				assert neededContinues == 0; // can't be bothered to implement this
+				assert this.neededContinues == 0; // can't be bothered to implement this
 				this.continueTargets--;
 			} else {
 				remaining.addAll(continues);
@@ -292,13 +302,17 @@ public class Context {
 
 			assert !needsBreak || breaks.stream().anyMatch(stat -> !WrappedBreakOutStatement.isDead(stat));
 			assert neededBreaks == 0 || remaining.stream().filter(s -> WrappedBreakOutStatement.base(s) instanceof Break && !WrappedBreakOutStatement.isDead(s)).count() >= neededBreaks;
-			assert breakTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
-			assert continueTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Continue);
+			assert this.breakTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Break);
+			assert this.continueTargets > 0 || remaining.stream().noneMatch(s -> WrappedBreakOutStatement.base(s) instanceof Continue);
 			return new List[]{remaining, breaks, continues};
 		}
 	}
 
 	public boolean needsBreakOuts() {
 		return this.neededBreaks > 0 || this.neededContinues > 0;
+	}
+
+	public boolean canHaveBreakShadowing() {
+		return this.neededBreaks == 0 || this.params.createLabels();
 	}
 }

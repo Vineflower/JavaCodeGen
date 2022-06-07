@@ -116,17 +116,22 @@ public class Creator {
 			stat = switch (this.random.nextInt(20)) {
 				case 0, 1 -> params.createLabels
 					? LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars)
-					: createStatement(completesNormally, allowSingleVarDef, context, params, vars);
-				case 2, 3, 4 -> IfCreator.createIfStatement(this, this.random, completesNormally, context, params, vars);
-				case 5, 6 -> WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars);
+					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
+				case 2, 3, 4 ->
+					IfCreator.createIfStatement(this, this.random, completesNormally, context, params, vars);
+				case 5, 6 -> context.canHaveBreakShadowing()
+					? WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars)
+					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
 				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
 				case 9 -> this.createScope(completesNormally, false, context, params, vars);
 				case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars);
 				case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars);
-				case 16, 17 -> completesNormally // foreach always completes normally
+				case 16, 17 -> completesNormally && context.canHaveBreakShadowing() // foreach always completes normally
 					? ForEachCreator.createForEachStatement(this, this.random, context, params, vars)
-					: ForCreator.createForStatement(this, this.random, false, context, params, vars);
-				case 18, 19 -> this.createSwitchStatement(completesNormally, context, params, vars);
+					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
+				case 18, 19 -> context.canHaveBreakShadowing()
+					? this.createSwitchStatement(completesNormally, context, params, vars)
+					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
 				default -> throw new IllegalStateException();
 			};
 		}
@@ -152,6 +157,7 @@ public class Creator {
 			return stats;
 		}
 	}
+
 	public static VarsEntry mergeBreakOutVars(List<? extends SimpleSingleNoFallThroughStatement> breakOut) {
 		VarsEntry vars = VarsEntry.never();
 		if (breakOut != null) {
@@ -191,7 +197,7 @@ public class Creator {
 	}
 
 	private Statement createSwitchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
-
+		context.catchesUnlabeledBreaks();
 		SwitchContext switchContext = randomSwitchContext();
 		List<Var> foundVars = new ArrayList<>();
 

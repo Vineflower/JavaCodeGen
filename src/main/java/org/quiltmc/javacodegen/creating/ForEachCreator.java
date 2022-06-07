@@ -19,7 +19,7 @@ import static org.quiltmc.javacodegen.Creator.mergeBreakOutVars;
 
 public final class ForEachCreator {
 	public static ForEachStatement createForEachStatement(Creator creator, RandomGenerator rng, Context context, Creator.Params params, VarsEntry inVars) {
-		context.canBreak().canContinue();
+		context.catchesUnlabeledBreaks().canBreak().canContinue();
 
 		List<Var> arrayTypes = inVars != null ? inVars.vars.entrySet().stream()
 			.filter(v -> v.getKey().type() instanceof ArrayType && v.getValue().isDefiniteAssigned())

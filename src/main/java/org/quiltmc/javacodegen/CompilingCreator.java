@@ -19,7 +19,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 2000;
+		int count = 20;
 
 		Path path = deleteDirs();
 
@@ -45,7 +45,7 @@ public final class CompilingCreator {
 				VarsEntry.resetId();
 
 				Creator.Params.Builder builder = new Creator.Params.Builder();
-				builder.createLabels(true);
+				builder.createLabels(false);
 				builder.createInfiniteLoops(true);
 
 				final long seed = seedGenerator.nextLong() + 3;
