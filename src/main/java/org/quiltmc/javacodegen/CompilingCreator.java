@@ -4,14 +4,13 @@ import org.quiltmc.javacodegen.statement.Statement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -105,14 +104,19 @@ public final class CompilingCreator {
 
 			Pattern var10000 = Pattern.compile("var100\\d\\d");
 
-			for (File file : Objects.requireNonNull(decompiled.toFile().listFiles())) {
-				try (Stream<String> stream = Files.lines(file.toPath())) {
-					boolean hasInvalidStack = stream.flatMap(str -> Arrays.stream(str.split(" "))).anyMatch(var10000.asPredicate());
 
-					if (hasInvalidStack) {
-						System.err.println(file.getName() + " decompiled with invalid stack var simplification");
+			try (Stream<Path> fileStream = Files.list(decompiled)) {
+				fileStream.forEach(file -> {
+					try (Stream<String> stream = Files.lines(file)) {
+						boolean hasInvalidStack = stream.flatMap(str -> Arrays.stream(str.split(" "))).anyMatch(var10000.asPredicate());
+
+						if (hasInvalidStack) {
+							System.err.println(file.getFileName() + " decompiled with invalid stack var simplification");
+						}
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
 					}
-				}
+				});
 			}
 
 			exec = Runtime.getRuntime()
@@ -146,12 +150,15 @@ public final class CompilingCreator {
 			Files.delete(subFolder);
 			return;
 		}
-		Files.list(subFolder).filter(Files::isRegularFile).forEach(path1 -> {
-			try {
-				Files.delete(path1);
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		});
+
+		try (Stream<Path> stream = Files.list(subFolder)) {
+			stream.filter(Files::isRegularFile).forEach(path1 -> {
+				try {
+					Files.delete(path1);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		}
 	}
 }
