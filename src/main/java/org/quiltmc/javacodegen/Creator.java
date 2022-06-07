@@ -92,7 +92,7 @@ public class Creator {
 			: this.createExpressionStatement(vars, allowSingleVarDef);
 	}
 
-	SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context, VarsEntry vars) {
+	public SimpleSingleNoFallThroughStatement createSimpleSingleNoFallThroughStatement(Context context, VarsEntry vars) {
 		return context.createBreak(this.random, vars);
 	}
 
@@ -114,7 +114,9 @@ public class Creator {
 			stat = this.createSingleStatement(completesNormally, allowSingleVarDef, context, vars);
 		} else {
 			stat = switch (this.random.nextInt(20)) {
-				case 0, 1 -> LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars);
+				case 0, 1 -> params.createLabels
+					? LabeledCreator.createLabeledStatement(this, this.random, completesNormally, context, params, vars)
+					: createStatement(completesNormally, allowSingleVarDef, context, params, vars);
 				case 2, 3, 4 -> IfCreator.createIfStatement(this, this.random, completesNormally, context, params, vars);
 				case 5, 6 -> WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars);
 				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
@@ -645,16 +647,41 @@ public class Creator {
 	}
 
 
-	public record Params(double size) {
+	// TODO: split into mutable and immutable?
+	public record Params(boolean createLabels, boolean createInfiniteLoops, double size) {
 
+		public Params(double size) {
+			this(true, true, size);
+		}
 
 		Params div(double scale) {
-			return new Params(this.size / scale);
+			return new Params(this.createLabels, this.createInfiniteLoops, this.size / scale);
 		}
 
 		// poisson distribution
 		int targetSize(RandomGenerator randomGenerator) {
 			return poisson(this.size, randomGenerator);
+		}
+
+		public static final class Builder {
+			private boolean createLabels = true;
+			private boolean createInfiniteLoops = true;
+
+			public Builder createLabels(boolean createLabels) {
+				this.createLabels = createLabels;
+
+				return this;
+			}
+
+			public Builder createInfiniteLoops(boolean createInfiniteLoops) {
+				this.createInfiniteLoops = createInfiniteLoops;
+
+				return this;
+			}
+
+			public Params build(double size) {
+				return new Params(this.createLabels, this.createInfiniteLoops, size);
+			}
 		}
 	}
 
@@ -674,8 +701,11 @@ public class Creator {
 	}
 
 	public Statement method(int size) {
-		Context context = new Context(this.version, this.typeCreator, this.expressionCreator);
-		Params params = new Params(size);
+		return method(new Params(size));
+	}
+
+	public Statement method(Params params) {
+		Context context = new Context(this.version, this.typeCreator, this.expressionCreator, params);
 
 		final Scope scope = this.createScope(false, true, context, params, VarsEntry.empty());
 		assert !context.needsBreakOuts();

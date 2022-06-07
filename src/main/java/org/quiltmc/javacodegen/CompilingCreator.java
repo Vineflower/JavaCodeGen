@@ -4,18 +4,23 @@ import org.quiltmc.javacodegen.statement.Statement;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Random;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 1000;
+		int count = 2000;
 
 		Path path = deleteDirs();
 
@@ -40,8 +45,12 @@ public final class CompilingCreator {
 			try {
 				VarsEntry.resetId();
 
+				Creator.Params.Builder builder = new Creator.Params.Builder();
+				builder.createLabels(true);
+				builder.createInfiniteLoops(true);
+
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(8);
+				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(8));
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
@@ -91,6 +100,18 @@ public final class CompilingCreator {
 					System.out.println(s);
 				} else {
 					System.err.println(s);
+				}
+			}
+
+			Pattern var10000 = Pattern.compile("var100\\d\\d");
+
+			for (File file : Objects.requireNonNull(decompiled.toFile().listFiles())) {
+				try (Stream<String> stream = Files.lines(file.toPath())) {
+					boolean hasInvalidStack = stream.flatMap(str -> Arrays.stream(str.split(" "))).anyMatch(var10000.asPredicate());
+
+					if (hasInvalidStack) {
+						System.err.println(file.getName() + " decompiled with invalid stack var simplification");
+					}
 				}
 			}
 

@@ -15,11 +15,13 @@ public class Context {
 	int neededContinues = 0; // should always be 0
 	int breakTargets = 0;
 	int continueTargets = 0;
+	private final Creator.Params params; // original params for data about code creation
 
-	public Context(JavaVersion version, TypeCreator typeCreator, ExpressionCreator expressionCreator) {
+	public Context(JavaVersion version, TypeCreator typeCreator, ExpressionCreator expressionCreator, Creator.Params params) {
 		this.version = version;
 		this.typeCreator = typeCreator;
 		this.expressionCreator = expressionCreator;
+		this.params = params;
 	}
 
 	public Context mustBreak(){
@@ -30,14 +32,17 @@ public class Context {
 
 	public Context canBreak() {
 		this.breakTargets++;
+
 		return this;
 	}
 
 	public Context canContinue() {
 		this.continueTargets++;
+
 		return this;
 	}
-	SimpleSingleNoFallThroughStatement createBreak(RandomGenerator randomGenerator, VarsEntry varsEntry) {
+
+	public SimpleSingleNoFallThroughStatement createBreak(RandomGenerator randomGenerator, VarsEntry varsEntry) {
 		if (this.neededBreaks > 0 && this.neededContinues > 0) {
 			throw new IllegalStateException("Can't both break and continue in the same statement");
 		} else if (this.neededBreaks > 1) {
@@ -45,9 +50,9 @@ public class Context {
 		} else if (this.neededContinues > 1) {
 			throw new IllegalStateException("Can't have more than one continue in the same statement");
 		} else if (this.neededBreaks > 0) {
-			return new Break(randomGenerator.nextBoolean(), varsEntry);
+			return new Break(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 		} else if (this.neededContinues > 0) {
-			return new Continue(randomGenerator.nextBoolean(), varsEntry);
+			return new Continue(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 		} else {
 			int count = this.breakTargets + this.continueTargets + 2;
 			int target = randomGenerator.nextInt(count) - 2;
@@ -56,9 +61,9 @@ public class Context {
 			} else if (target == -1) {
 				return new Throw(varsEntry);
 			} else if (target < this.breakTargets) {
-				return new Break(randomGenerator.nextBoolean(), varsEntry);
+				return new Break(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 			} else {
-				return new Continue(randomGenerator.nextBoolean(), varsEntry);
+				return new Continue(!params.createLabels() || randomGenerator.nextBoolean(), varsEntry);
 			}
 		}
 	}
@@ -148,6 +153,7 @@ public class Context {
 
 			return new List[0];
 		} else {
+
 			List<SimpleSingleNoFallThroughStatement> breaks = new ArrayList<>();
 			List<SimpleSingleNoFallThroughStatement> continues = new ArrayList<>();
 			List<SimpleSingleNoFallThroughStatement> remaining = new ArrayList<>();

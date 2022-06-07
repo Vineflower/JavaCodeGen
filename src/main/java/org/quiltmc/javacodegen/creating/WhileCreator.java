@@ -13,11 +13,11 @@ import static org.quiltmc.javacodegen.Creator.applyScopesToBreakOut;
 import static org.quiltmc.javacodegen.Creator.mergeBreakOutVars;
 
 public class WhileCreator {
-	public static WhileStatement createWhileStatement(Creator creator, RandomGenerator rng, boolean completesNormally, Context context, Creator.Params params, VarsEntry inVars) {
+	public static Statement createWhileStatement(Creator creator, RandomGenerator rng, boolean completesNormally, Context context, Creator.Params params, VarsEntry inVars) {
 		// TODO: weirder for loops (i.e. init, cond, incr not using the same var)
 
 		if (completesNormally) {
-			if (rng.nextInt(5) == 0) {
+			if (rng.nextInt(5) == 0 && params.createInfiniteLoops()) {
 				return WhileCreator.createInfiniteWhileWithBreaks(creator, rng, context, params, inVars);
 			} else {
 				return WhileCreator.createFiniteWhile(creator, rng, context, params, inVars);
