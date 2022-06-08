@@ -22,9 +22,13 @@ public class ExpressionCreator {
 		this.random = random;
 	}
 
-	public void random(Type type, StringBuilder builder) {
+	public void random(Type type, StringBuilder builder, VarsEntry vars) {
 		if (type instanceof PrimitiveTypes primitiveType) {
-			this.createPrimitiveConstantExpression(primitiveType).javaLike(builder);
+			if (primitiveType == PrimitiveTypes.BOOLEAN && random.nextInt(2) == 0) {
+				this.buildCondition(vars).javaLike(builder);
+			} else {
+				this.createPrimitiveConstantExpression(primitiveType).javaLike(builder);
+			}
 		} else if (type instanceof ArrayType arrayType) {
 
 			builder.append("new ");
@@ -47,14 +51,14 @@ public class ExpressionCreator {
 			} else {
 				builder.append("((").append(box.type().name().toLowerCase(Locale.ROOT)).append(")");
 			}
-			this.random(box.type(), builder);
+			this.random(box.type(), builder, vars);
 			builder.append(")");
 		}
 	}
 
 
 	public Expression createExpression(Type targetType, VarsEntry vars) {
-		return builder -> this.random(targetType, builder);
+		return builder -> this.random(targetType, builder, vars);
 	}
 
 	Expression createStandaloneExpression(Type targetType, VarsEntry vars) {
@@ -63,10 +67,14 @@ public class ExpressionCreator {
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
 					if (this.random.nextInt(i) == 0) {
-						Expression expr = this.buildReassign(vars);
+						Expression expr;
 
-						if (expr != DEFAULT && random.nextInt(3) > 0) {
-							return expr;
+						if (random.nextInt(3) > 0) {
+							expr = this.buildReassign(vars);
+
+							if (expr != DEFAULT) {
+								return expr;
+							}
 						}
 
 						if (random.nextInt(3) == 0 && varVarStateEntry.getKey().type() instanceof PrimitiveTypes pt && pt.integralType()) {

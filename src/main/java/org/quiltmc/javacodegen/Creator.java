@@ -57,7 +57,7 @@ public class Creator {
 		var vars = new VarsEntry(inVars);
 		if (this.random.nextInt(5) != 0) {
 			// simple single postFinallyVars
-			Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(outerType, vars);
+			Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(outerType, inVars);
 			final Var var = new Var(vars.nextName(), outerType, FinalType.NOT_FINAL);
 			vars.create(var, value != null);
 			vars.freeze();
@@ -73,7 +73,7 @@ public class Creator {
 			for (int i = 0; i < varCount; i++) {
 				int depth = this.random.nextInt(5) == 0 ? this.poisson(3) : 0;
 				Type innerType = ArrayType.ofDepth(outerType, depth);
-				Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(innerType, vars);
+				Expression value = this.random.nextInt(3) == 0 ? null : this.expressionCreator.createExpression(innerType, inVars);
 				final Var var = new Var(vars.nextName(), innerType, FinalType.NOT_FINAL);
 				vars.create(var, value != null);
 				varDeclarations.add(new VarDefStatement.VarDeclaration(var, depth, value));
