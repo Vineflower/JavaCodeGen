@@ -40,13 +40,16 @@ public final class CompilingCreator {
 		System.out.println("Global seed: " + realSeed);
 		seedGenerator = new Random(realSeed);
 
+		final boolean createLabels = false;
+		final boolean createInfiniteLoops = true;
+
 		for (int i = 0; i < count; i++) {
 			try {
 				VarsEntry.resetId();
 
 				Creator.Params.Builder builder = new Creator.Params.Builder();
-				builder.createLabels(false);
-				builder.createInfiniteLoops(true);
+				builder.createLabels(createLabels);
+				builder.createInfiniteLoops(createInfiniteLoops);
 
 				final long seed = seedGenerator.nextLong() + 3;
 				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(5));
@@ -75,7 +78,9 @@ public final class CompilingCreator {
 			System.exit(1);
 		}
 
-		NoLabelValidator.INSTANCE.validateFolder(fuzzed);
+		if (!createLabels) {
+			NoLabelValidator.INSTANCE.validateFolder(fuzzed);
+		}
 
 		Process exec = Runtime.getRuntime().exec(
 			"javac --enable-preview --release 17 -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
@@ -105,7 +110,10 @@ public final class CompilingCreator {
 			}
 
 			NoStackVarValidator.INSTANCE.validateFolder(decompiled);
-			NoLabelValidator.INSTANCE.validateFolder(decompiled);
+
+			if (!createLabels) {
+				NoLabelValidator.INSTANCE.validateFolder(decompiled);
+			}
 
 			exec = Runtime.getRuntime()
 				.exec("javac --enable-preview --release 17 -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());
