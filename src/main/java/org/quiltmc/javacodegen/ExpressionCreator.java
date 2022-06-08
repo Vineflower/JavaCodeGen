@@ -11,10 +11,7 @@ import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.random.RandomGenerator;
 
 public class ExpressionCreator {
@@ -100,16 +97,44 @@ public class ExpressionCreator {
 	}
 
 	public Expression buildCondition(VarsEntry vars) {
+		return buildCondition(vars, false);
+	}
+	public Expression buildCondition(VarsEntry vars, boolean allowLiterals) {
+		List<Var> varsChoice = new ArrayList<>();
+		
 		if (vars != null && !vars.vars.isEmpty() && this.random.nextInt(8) != 0) {
-			int i = vars.vars.size();
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
-					if (this.random.nextInt(i) == 0) {
-						return this.buildCondition(varVarStateEntry.getKey());
-					}
+					varsChoice.add(varVarStateEntry.getKey());
 				}
-				i--;
 			}
+		}
+
+		if (!varsChoice.isEmpty()) {
+			if (random.nextInt(5) == 0) {
+				Expression cond = buildCondition(vars, true);
+				Expression a = buildCondition(vars, true);
+				Expression b = buildCondition(vars, true);
+
+				return new TernaryExpression(cond, a, b);
+			} else if (random.nextInt(4) == 0) {
+				Expression a = buildCondition(vars, true);
+				Expression b = buildCondition(vars, true);
+
+				BooleanBinaryOperatorExpression.Operator opr = switch (random.nextInt(2)) {
+					case 0 -> BooleanBinaryOperatorExpression.Operator.ANDAND;
+					case 1 -> BooleanBinaryOperatorExpression.Operator.OROR;
+					default -> throw new IllegalStateException();
+				};
+
+				return new BooleanBinaryOperatorExpression(a, b, opr);
+			}
+
+			return buildCondition(varsChoice.get(this.random.nextInt(varsChoice.size())));
+		}
+
+		if (random.nextInt(4) == 0 && allowLiterals) {
+			return random.nextBoolean() ? new LiteralExpression(PrimitiveTypes.BOOLEAN, true) : new LiteralExpression(PrimitiveTypes.BOOLEAN, false);
 		}
 
 		return builder -> builder.append("new Random().nextBoolean()");
