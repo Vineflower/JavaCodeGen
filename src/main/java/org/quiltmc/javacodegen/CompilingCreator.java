@@ -97,7 +97,7 @@ public final class CompilingCreator {
 		if (QF_JAR != null) {
 
 			exec = Runtime.getRuntime()
-				.exec("java -jar " + QF_JAR + " -jrt=1 " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
+				.exec("java -jar " + QF_JAR + " -jrt=1 -tco=1 " + compiled.toAbsolutePath() + " " + decompiled.toAbsolutePath());
 
 			serr = new BufferedReader(new InputStreamReader(exec.getInputStream()));
 
