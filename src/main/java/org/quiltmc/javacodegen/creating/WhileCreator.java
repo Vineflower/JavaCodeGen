@@ -89,10 +89,14 @@ public class WhileCreator {
 		// infinite for without breaks
 		context.catchesUnlabeledBreaks().canContinue();
 
+		int breakCache = context.disableBreakGenerationForLabels();
+
 		var body = CreateUtils.createMaybeScopeRestoring(creator, rng, context, params, inVars);
 
 		List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
 			rng, body.breakOuts(), false, false, true);
+
+		context.restoreBreakGeneration(breakCache);
 
 		return createWhile(
 			inVars,

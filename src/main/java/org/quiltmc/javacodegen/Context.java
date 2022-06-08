@@ -11,6 +11,8 @@ public class Context {
 	public final JavaVersion version;
 	public final TypeCreator typeCreator;
 	public final ExpressionCreator expressionCreator;
+
+	boolean canProduceBreaks = false;
 	int neededBreaks = 0;
 	private int neededContinues = 0; // should always be 0
 	int breakTargets = 0;
@@ -25,14 +27,14 @@ public class Context {
 	}
 
 	public Context catchesUnlabeledBreaks() {
-		if (this.params.createLabels() && this.neededBreaks > 0){
+		if (!this.params.createLabels() && this.neededBreaks > 0) {
 			throw new IllegalStateException("Required break is inaccessible");
 		}
 
 		return this;
 	}
 
-	public Context mustBreak(){
+	public Context mustBreak() {
 		this.neededBreaks++;
 		this.breakTargets++;
 		return this;
@@ -191,87 +193,95 @@ public class Context {
 			}
 
 			if (canHaveBreaks) {
-				List<SimpleSingleNoFallThroughStatement> fakeBreaks = new ArrayList<>();
-				breaks.removeIf(s ->
-					WrappedBreakOutStatement.isDead(s) && fakeBreaks.add(s) // add always returns true
-				);
-				assert breaks.size() >= this.neededBreaks;
-				if (needsBreak) {
-					neededBreaks--; // update for assert at the end
-					this.neededBreaks--;
-					int x = random.nextInt(breaks.size() - this.neededBreaks); // TODO: this is not great
-					for (int i = 0; i < breaks.size() - this.neededBreaks; ) {
-						if (i == x || random.nextInt(this.breakTargets) == 0) {
-							i++;
-						} else {
-							// yeah i know this isn't optimal
-							final SimpleSingleNoFallThroughStatement stat = breaks.remove(i);
+				if(params.createLabels()) {
+					List<SimpleSingleNoFallThroughStatement> fakeBreaks = new ArrayList<>();
+					breaks.removeIf(s ->
+						WrappedBreakOutStatement.isDead(s) && fakeBreaks.add(s) // add always returns true
+					);
+					assert breaks.size() >= this.neededBreaks;
+					if (needsBreak) {
+						neededBreaks--; // update for assert at the end
+						this.neededBreaks--;
+						int x = random.nextInt(breaks.size() - this.neededBreaks); // TODO: this is not great
+						for (int i = 0; i < breaks.size() - this.neededBreaks; ) {
+							if (i == x || random.nextInt(this.breakTargets) == 0) {
+								i++;
+							} else {
+								// yeah i know this isn't optimal
+								final SimpleSingleNoFallThroughStatement stat = breaks.remove(i);
+								remaining.add(stat);
+								WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+								if (this.neededBreaks > 0) {
+									this.neededBreaks--;
+									// x += random.nextInt(2);
+								}
+								x--;
+							}
+							assert neededBreaks == 0 ||
+								   remaining.stream()
+									   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
+													!WrappedBreakOutStatement.isDead(s))
+									   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
+						}
+						for (; this.neededBreaks > 0; this.neededBreaks--) {
+							final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
 							remaining.add(stat);
 							WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
-							if (this.neededBreaks > 0) {
-								this.neededBreaks--;
-								// x += random.nextInt(2);
-							}
-							x--;
+							assert neededBreaks == 0 ||
+								   remaining.stream()
+									   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
+													!WrappedBreakOutStatement.isDead(s))
+									   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
 						}
-						assert neededBreaks == 0 ||
-							   remaining.stream()
-								   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
-												!WrappedBreakOutStatement.isDead(s))
-								   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
+						assert breaks.stream().anyMatch(stat -> !WrappedBreakOutStatement.isDead(stat));
+					} else {
+						for (int i = 0; i < breaks.size() - this.neededBreaks; ) {
+							if (random.nextInt(this.breakTargets) == 0) {
+								i++;
+							} else {
+								// yeah i know this isn't optimal
+								final SimpleSingleNoFallThroughStatement stat = breaks.remove(i);
+								remaining.add(stat);
+								WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+								if (this.neededBreaks > 0) {
+									this.neededBreaks--;
+								}
+							}
+							assert neededBreaks == 0 ||
+								   remaining.stream()
+									   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
+													!WrappedBreakOutStatement.isDead(s))
+									   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
+						}
+						for (; this.neededBreaks > 0; this.neededBreaks--) {
+							final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
+							remaining.add(stat);
+							WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
+							assert neededBreaks == 0 ||
+								   remaining.stream()
+									   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
+													!WrappedBreakOutStatement.isDead(s))
+									   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
+						}
 					}
-					for (; this.neededBreaks > 0; this.neededBreaks--) {
-						final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
-						remaining.add(stat);
-						WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
-						assert neededBreaks == 0 ||
-							   remaining.stream()
-								   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
-												!WrappedBreakOutStatement.isDead(s))
-								   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
-					}
-					assert breaks.stream().anyMatch(stat -> !WrappedBreakOutStatement.isDead(stat));
+					fakeBreaks.removeIf(s ->
+						{
+							if (random.nextInt(this.breakTargets) != 0) {
+								remaining.add(s);
+								WrappedBreakOutStatement.<Break>baseAs(s).setSimple(false);
+								return true;
+							}
+							return false;
+						} // add always returns true
+					);
+					breaks.addAll(fakeBreaks);
 				} else {
-					for (int i = 0; i < breaks.size() - this.neededBreaks; ) {
-						if (random.nextInt(this.breakTargets) == 0) {
-							i++;
-						} else {
-							// yeah i know this isn't optimal
-							final SimpleSingleNoFallThroughStatement stat = breaks.remove(i);
-							remaining.add(stat);
-							WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
-							if (this.neededBreaks > 0) {
-								this.neededBreaks--;
-							}
-						}
-						assert neededBreaks == 0 ||
-							   remaining.stream()
-								   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
-												!WrappedBreakOutStatement.isDead(s))
-								   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
-					}
-					for (; this.neededBreaks > 0; this.neededBreaks--) {
-						final SimpleSingleNoFallThroughStatement stat = breaks.remove(breaks.size() - 1);
-						remaining.add(stat);
-						WrappedBreakOutStatement.<Break>baseAs(stat).setSimple(false);
-						assert neededBreaks == 0 ||
-							   remaining.stream()
-								   .filter(s -> WrappedBreakOutStatement.base(s) instanceof Break &&
-												!WrappedBreakOutStatement.isDead(s))
-								   .count() >= neededBreaks - this.neededBreaks; // this.neededBreaks are the ones still needed
+					if (needsBreak) {
+						neededBreaks--; // update for assert at the end
+						this.neededBreaks--;
+						assert this.neededBreaks == 0;
 					}
 				}
-				fakeBreaks.removeIf(s ->
-					{
-						if (random.nextInt(this.breakTargets) != 0) {
-							remaining.add(s);
-							WrappedBreakOutStatement.<Break>baseAs(s).setSimple(false);
-							return true;
-						}
-						return false;
-					} // add always returns true
-				);
-				breaks.addAll(fakeBreaks);
 
 				this.breakTargets--;
 			} else {
@@ -282,18 +292,20 @@ public class Context {
 			}
 
 			if (canHaveContinues) {
-				for (int i = 0; i < continues.size(); ) {
-					if (random.nextInt(this.continueTargets) == 0) {
-						i++;
-					} else {
-						// yeah i know this isn't optimal
-						final SimpleSingleNoFallThroughStatement stat = continues.remove(i);
-						remaining.add(stat);
-						WrappedBreakOutStatement.<Continue>baseAs(stat).setSimple(false);
+				if (params.createLabels()) {
+					for (int i = 0; i < continues.size(); ) {
+						if (random.nextInt(this.continueTargets) == 0) {
+							i++;
+						} else {
+							// yeah i know this isn't optimal
+							final SimpleSingleNoFallThroughStatement stat = continues.remove(i);
+							remaining.add(stat);
+							WrappedBreakOutStatement.<Continue>baseAs(stat).setSimple(false);
+						}
 					}
-				}
 
-				assert this.neededContinues == 0; // can't be bothered to implement this
+					assert this.neededContinues == 0; // can't be bothered to implement this
+				}
 				this.continueTargets--;
 			} else {
 				remaining.addAll(continues);
@@ -314,5 +326,24 @@ public class Context {
 
 	public boolean canHaveBreakShadowing() {
 		return this.neededBreaks == 0 || this.params.createLabels();
+	}
+
+	public int disableBreakGenerationForLabels() {
+		if (!this.params.createLabels()) {
+			if (this.neededBreaks > 0) {
+				throw new IllegalStateException("Required break is inaccessible");
+			}
+			int old = this.breakTargets;
+			this.breakTargets = 0;
+			return old;
+		} else {
+			return 0;
+		}
+	}
+
+	public void restoreBreakGeneration(int breakTargets) {
+		if (!this.params.createLabels()) {
+			this.breakTargets = breakTargets;
+		}
 	}
 }

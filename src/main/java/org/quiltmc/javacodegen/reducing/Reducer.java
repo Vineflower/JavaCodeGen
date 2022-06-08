@@ -2,6 +2,8 @@
 //
 //import org.quiltmc.javacodegen.creating.ForCreator;
 //import org.quiltmc.javacodegen.creating.ForEachCreator;
+//import org.quiltmc.javacodegen.creating.IfCreator;
+//import org.quiltmc.javacodegen.creating.LabeledCreator;
 //import org.quiltmc.javacodegen.expression.Expression;
 //import org.quiltmc.javacodegen.statement.*;
 //import org.quiltmc.javacodegen.vars.VarsEntry;
@@ -65,8 +67,6 @@
 //			res = this.reduceVarDefStatement(varDefStat, statementMap, inVars);
 //		} else if (stat instanceof WhileStatement whileStat) {
 //			res = this.reduceWhileStatement(whileStat, statementMap, inVars);
-//		} else if (stat instanceof WhileTrue whileTrueStat) {
-//			res = this.reduceWhileTrueStatement(whileTrueStat, statementMap, inVars);
 //		} else {
 //			throw new RuntimeException("Unknown statement type: " + stat.getClass().getSimpleName());
 //		}
@@ -100,6 +100,7 @@
 //
 //		return ForEachCreator.createForEach(inVars, col, varDecl, block, breaks, continues, breakOuts);
 //	}
+//
 //	public Statement reduceForStatement(ForStatement stat, Map<Statement, Statement> statementMap, VarsEntry inVars) {
 //		var varDec = this.reduceVarDec(stat.varDec(), inVars);
 //		var condition = this.reduceExpression(stat.condition(), inVars);
@@ -110,6 +111,30 @@
 //		var breakOuts = this.reduceBreakOutList(stat.breakOuts(), statementMap);
 //
 //		return ForCreator.createFor(inVars, varDec, condition, block, incr, breaks, continues, breakOuts);
+//	}
+//
+//	public Statement reduceIfStatement(IfStatement stat, Map<Statement, Statement> statementMap, VarsEntry inVars) {
+//		var condition = this.reduceExpression(stat.condition(), inVars);
+//		var ifTrue = this.reduceStatement(stat.ifTrue(), statementMap, inVars);
+//		var ifFalse = this.reduceStatement(stat.ifFalse(), statementMap, inVars);
+//		var breakOuts = this.reduceBreakOutList(stat.breakOuts(), statementMap);
+//
+//		return IfCreator.createIf(inVars, condition, ifTrue, ifFalse, breakOuts);
+//	}
+//
+//	public Statement reduceLabeledStatement(LabeledStatement stat, Map<Statement, Statement> statementMap, VarsEntry inVars) {
+//		var inner = this.reduceStatement(stat.inner(), statementMap, inVars);
+//		var breaks = this.reduceBreakOutList(stat.breaks(), statementMap);
+//		var breakOuts = this.reduceBreakOutList(stat.breakOuts(), statementMap);
+//
+//		return LabeledCreator.createLabeled(inVars, inner, breaks, breakOuts);
+//	}
+//
+//	// monitor
+//	public Statement reduceMonitorStatement(MonitorStatement stat, Map<Statement, Statement> statementMap, VarsEntry inVars) {
+//		var body = this.reduceScope(stat.body(), statementMap, inVars);
+//
+//		return new MonitorStatement(body);
 //	}
 //
 //	private VarDefStatement.VarDeclaration reduceVarDec(VarDefStatement.VarDeclaration varDec, VarsEntry inVars) {
@@ -129,5 +154,12 @@
 //
 //	public Expression reduceExpression(Expression expression, VarsEntry inVars) {
 //		return expression;
+//	}
+//
+//	public Scope wrapWithScopeIfNeeded(Statement statement) {
+//		if (statement instanceof Scope scope) {
+//			return scope;
+//		}
+//		return new Scope(List.of(statement), statement.varsEntry(), statement.breakOuts());
 //	}
 //}

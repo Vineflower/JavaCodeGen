@@ -1,6 +1,8 @@
 package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.statement.Statement;
+import org.quiltmc.javacodegen.validation.NoLabelValidator;
+import org.quiltmc.javacodegen.validation.NoStackVarValidator;
 import org.quiltmc.javacodegen.vars.VarsEntry;
 
 import java.io.BufferedReader;
@@ -10,16 +12,14 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Random;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 20;
+		int count = 200;
 
 		Path path = deleteDirs();
 
@@ -49,7 +49,7 @@ public final class CompilingCreator {
 				builder.createInfiniteLoops(true);
 
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(8));
+				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(5));
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");
@@ -74,6 +74,8 @@ public final class CompilingCreator {
 			System.out.println("Failed to generate " + failedToGenerate + " classes");
 			System.exit(1);
 		}
+
+		NoLabelValidator.INSTANCE.validateFolder(fuzzed);
 
 		Process exec = Runtime.getRuntime().exec(
 			"javac --enable-preview --release 17 -encoding utf-8 -g " + fuzzed.toAbsolutePath() + "\\*.java -d " + compiled.toAbsolutePath());
@@ -102,22 +104,8 @@ public final class CompilingCreator {
 				}
 			}
 
-			Pattern var10000 = Pattern.compile("var100\\d\\d");
-
-
-			try (Stream<Path> fileStream = Files.list(decompiled)) {
-				fileStream.forEach(file -> {
-					try (Stream<String> stream = Files.lines(file)) {
-						boolean hasInvalidStack = stream.flatMap(str -> Arrays.stream(str.split(" "))).anyMatch(var10000.asPredicate());
-
-						if (hasInvalidStack) {
-							System.err.println(file.getFileName() + " decompiled with invalid stack var simplification");
-						}
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-				});
-			}
+			NoStackVarValidator.INSTANCE.validateFolder(decompiled);
+			NoLabelValidator.INSTANCE.validateFolder(decompiled);
 
 			exec = Runtime.getRuntime()
 				.exec("javac --enable-preview --release 17 -encoding utf-8 -g " + decompiled.toAbsolutePath() + "\\*.java -d " + recompiled.toAbsolutePath());

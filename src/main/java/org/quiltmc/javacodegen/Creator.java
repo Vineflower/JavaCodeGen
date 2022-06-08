@@ -122,7 +122,9 @@ public class Creator {
 				case 5, 6 -> context.canHaveBreakShadowing()
 					? WhileCreator.createWhileStatement(this, this.random, completesNormally, context, params, vars)
 					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
-				case 7, 8 -> ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars);
+				case 7, 8 -> context.canHaveBreakShadowing()
+					? ForCreator.createForStatement(this, this.random, completesNormally, context, params, vars)
+					: this.createStatement(completesNormally, allowSingleVarDef, context, params, vars);
 				case 9 -> this.createScope(completesNormally, false, context, params, vars);
 				case 10, 11 -> this.createMonitorStatement(completesNormally, context, params, vars);
 				case 12, 13, 14, 15 -> this.createTryCatchStatement(completesNormally, context, params, vars);
@@ -198,6 +200,7 @@ public class Creator {
 
 	private Statement createSwitchStatement(boolean completesNormally, Context context, Params params, VarsEntry inVars) {
 		context.catchesUnlabeledBreaks();
+		int breakCache = -1;
 		SwitchContext switchContext = randomSwitchContext();
 		List<Var> foundVars = new ArrayList<>();
 
@@ -241,6 +244,7 @@ public class Creator {
 				}
 			}
 		} else {
+			breakCache = context.disableBreakGenerationForLabels();
 			branchAmt = this.poisson(3) + 1;
 			lastCompletesNormally = false;
 			includeDefault = true;
@@ -334,6 +338,10 @@ public class Creator {
 		var breakOuts = context.splitBreakOuts(
 			this.random, applyScopesToBreakOut(inVars, allBreakOuts),
 			completesNormally && !lastCompletesNormally, completesNormally, false);
+
+		if(!completesNormally){
+			context.restoreBreakGeneration(breakCache);
+		}
 
 		return new SwitchStatement(
 			expression,

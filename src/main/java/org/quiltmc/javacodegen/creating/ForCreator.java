@@ -92,6 +92,7 @@ public class ForCreator {
 	public static ForStatement createInfiniteForWithoutBreaks(Creator creator, RandomGenerator rng, Context context, Creator.Params params, VarsEntry inVars) {
 		// infinite for without breaks
 		context.catchesUnlabeledBreaks().canContinue();
+		int breakCache = context.disableBreakGenerationForLabels();
 
 		Type outerType = context.typeCreator.createNumericalType();
 		VarsEntry vars = new VarsEntry(inVars);
@@ -103,6 +104,8 @@ public class ForCreator {
 
 		List<? extends SimpleSingleNoFallThroughStatement>[] breakOuts = context.splitBreakOuts(
 			rng, body.breakOuts(), false, false, true);
+
+		context.restoreBreakGeneration(breakCache);
 
 		return ForCreator.createFor(
 			inVars,
