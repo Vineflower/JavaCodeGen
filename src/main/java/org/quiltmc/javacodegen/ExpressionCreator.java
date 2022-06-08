@@ -149,6 +149,12 @@ public class ExpressionCreator {
 						.append("'").append((char) (this.random.nextInt(26) + 'a')).append("'");
 			}
 
+			String varStr = var.name();
+			if (((PrimitiveTypes) var.type()).integralType() && random.nextInt(5) == 0) {
+				String ppmm = random.nextBoolean() ? "++" : "--";
+				varStr = random.nextBoolean() ? varStr + ppmm : ppmm + varStr;
+			}
+
 			String cond = switch (this.random.nextInt(6)) {
 				case 0 -> "!=";
 				case 1 -> "==";
@@ -159,8 +165,9 @@ public class ExpressionCreator {
 				default -> throw new IllegalStateException();
 			};
 
+			String finalVarStr = varStr;
 			return builder -> {
-				builder.append(var.name()).append(" ").append(cond).append(" ");
+				builder.append(finalVarStr).append(" ").append(cond).append(" ");
 				this.createPrimitiveConstantExpression(primitiveType).javaLike(builder);
 			};
 		} else {
