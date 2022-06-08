@@ -65,13 +65,17 @@ public class ExpressionCreator {
 					if (this.random.nextInt(i) == 0) {
 						Expression expr = this.buildReassign(vars);
 
-						if (expr != DEFAULT) {
+						if (expr != DEFAULT && random.nextInt(3) > 0) {
 							return expr;
 						}
 
-						expr = this.buildIncrement(varVarStateEntry.getKey());
+						if (random.nextInt(3) == 0 && varVarStateEntry.getKey().type() instanceof PrimitiveTypes pt && pt.integralType()) {
+							expr = builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? "++" : "--");
+						} else {
+							expr = this.buildIncrement(varVarStateEntry.getKey());
+						}
 
-						if (this.random.nextInt(3) == 0 || expr == DEFAULT) {
+						if (this.random.nextInt(4) == 0 || expr == DEFAULT) {
 							return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
 						} else {
 							return expr;
