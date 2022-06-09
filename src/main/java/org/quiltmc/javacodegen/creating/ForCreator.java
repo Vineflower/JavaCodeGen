@@ -53,7 +53,7 @@ public class ForCreator {
 			new VarDefStatement.VarDeclaration(var, 0, context.expressionCreator.createExpression(outerType, inVars)),
 			null,
 			body,
-			context.expressionCreator.buildIncrement(var),
+			context.expressionCreator.buildIncrement(var, vars),
 			breakOuts[1],
 			breakOuts[2],
 			breakOuts[0]
@@ -82,7 +82,7 @@ public class ForCreator {
 			new VarDefStatement.VarDeclaration(var, 0, context.expressionCreator.createExpression(outerType, inVars)),
 			context.expressionCreator.buildCondition(var),
 			body,
-			context.expressionCreator.buildIncrement(var),
+			context.expressionCreator.buildIncrement(var, vars),
 			breakOuts[1],
 			breakOuts[2],
 			breakOuts[0]
@@ -112,7 +112,7 @@ public class ForCreator {
 			new VarDefStatement.VarDeclaration(var, 0, context.expressionCreator.createExpression(outerType, inVars)),
 			null,
 			body,
-			context.expressionCreator.buildIncrement(var),
+			context.expressionCreator.buildIncrement(var, vars),
 			breakOuts[1],
 			breakOuts[2],
 			breakOuts[0]

@@ -77,11 +77,15 @@ public class ExpressionCreator {
 							}
 						}
 
-						if (random.nextInt(3) == 0 && varVarStateEntry.getKey().type() instanceof PrimitiveTypes pt && pt.integralType()) {
-							expr = builder -> builder.append(varVarStateEntry.getKey().name()).append(random.nextBoolean() ? "++" : "--");
-						} else {
-							expr = this.buildIncrement(varVarStateEntry.getKey());
+						if (random.nextInt(3) == 0) {
+							expr = this.buildPPMM(varVarStateEntry.getKey(), vars);
+
+							if (expr != DEFAULT) {
+								return expr;
+							}
 						}
+
+						expr = this.buildIncrement(varVarStateEntry.getKey(), vars);
 
 						if (this.random.nextInt(4) == 0 || expr == DEFAULT) {
 							return builder -> builder.append("System.out.println(").append(varVarStateEntry.getKey().name()).append(")");
@@ -108,9 +112,85 @@ public class ExpressionCreator {
 		);
 	}
 
+	public Expression buildPPMM(Var var, VarsEntry vars) {
+		if (var.type() instanceof PrimitiveTypes pt && pt.integralType()) {
+			return builder -> builder.append(var.name()).append(random.nextBoolean() ? "++" : "--");
+		}
+
+		if (var.type() instanceof ArrayType at && at.base() instanceof PrimitiveTypes pt && pt.integralType()) {
+			return builder -> {
+				builder.append(var.name());
+				for (int i = 0; i < at.depth(); i++) {
+					builder.append("[").append(buildIntegralExpression(vars).toJava()).append("]");
+				}
+
+				builder.append(random.nextBoolean() ? "++" : "--");
+			};
+		}
+
+		return DEFAULT;
+	}
+
+	public Expression buildIntegralExpression(VarsEntry vars) {
+		List<Var> varsChoice = new ArrayList<>();
+
+		for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
+			if (varVarStateEntry.getValue().isDefiniteAssigned()) {
+				Var key = varVarStateEntry.getKey();
+
+				if (key.type() instanceof PrimitiveTypes pt && pt.integralType()) {
+					varsChoice.add(key);
+				}
+//				else if (key.type() instanceof ArrayType at && at.base() instanceof PrimitiveTypes pt && pt.integralType()) {
+//					varsChoice.add(key);
+//				}
+			}
+		}
+
+		if (varsChoice.isEmpty() || random.nextInt(3) == 0) {
+			return new LiteralExpression(PrimitiveTypes.INT, 0);
+		}
+
+		Var choice1 = varsChoice.get(random.nextInt(varsChoice.size()));
+		if (random.nextBoolean()) {
+			if (choice1.type() instanceof ArrayType at) {
+//				return at
+			} else {
+				return new VariableExpression(choice1);
+			}
+		}
+
+		// math expression
+
+		String cond = switch (this.random.nextInt(8)) {
+			case 0 -> " + ";
+			case 1 -> " - ";
+			case 2 -> " * ";
+			case 3 -> " / ";
+			case 4 -> " % ";
+			case 5 -> " & ";
+			case 6 -> " | ";
+			case 7 -> " ^ ";
+			default -> throw new IllegalStateException();
+		};
+
+		if (random.nextBoolean()) {
+			return builder -> builder.append(choice1.name()).append(cond).append(this.createPrimitiveConstantExpression(PrimitiveTypes.INT).toJava());
+		}
+
+		if (random.nextBoolean()) {
+			Var choice2 = varsChoice.get(random.nextInt(varsChoice.size()));
+
+			return builder -> builder.append(choice1.name()).append(cond).append(choice2.name());
+		}
+
+		return builder -> builder.append(choice1.name()).append(cond).append(this.buildIntegralExpression(vars).toJava());
+	}
+
 	public Expression buildCondition(VarsEntry vars) {
 		return buildCondition(vars, false);
 	}
+
 	public Expression buildCondition(VarsEntry vars, boolean allowLiterals) {
 		List<Var> varsChoice = new ArrayList<>();
 		
@@ -123,7 +203,7 @@ public class ExpressionCreator {
 		}
 
 		if (!varsChoice.isEmpty()) {
-			if (random.nextInt(5) == 0) {
+			if (random.nextInt(8) == 0) {
 				Expression cond = buildCondition(vars, true);
 				Expression a = buildCondition(vars, true);
 				Expression b = buildCondition(vars, true);
@@ -231,7 +311,7 @@ public class ExpressionCreator {
 			for (Map.Entry<Var, VarState> varVarStateEntry : vars.vars.entrySet()) {
 				if (varVarStateEntry.getValue().isDefiniteAssigned()) {
 					if (this.random.nextInt(i) == 0) {
-						return this.buildIncrement(varVarStateEntry.getKey());
+						return this.buildIncrement(varVarStateEntry.getKey(), vars);
 					}
 				}
 				i--;
@@ -241,27 +321,37 @@ public class ExpressionCreator {
 		return DEFAULT;
 	}
 
-	public Expression buildIncrement(Var var) {
+	public Expression buildIncrement(Var var, VarsEntry vars) {
 		Expression value;
-		if (var.type() instanceof PrimitiveTypes primitiveType) {
+		Type type = var.type();
+		if (type instanceof ArrayType at) {
+			type = at.base();
+		}
+
+		if (type instanceof PrimitiveTypes primitiveType) {
 			if (!isPrimitiveNumerical(primitiveType)) {
 				return DEFAULT;
 			}
 
 			value = this.createPrimitiveConstantExpression(primitiveType);
-		} else if (var.type() instanceof PrimitiveTypes.Boxed boxed) {
+		} else if (type instanceof PrimitiveTypes.Boxed boxed) {
 			if (!isPrimitiveNumerical(boxed.type())) {
 				return DEFAULT;
 			}
 
 			value = this.createPrimitiveConstantExpression(boxed.type());
 		} else {
-			return DEFAULT;
+			if (type == BasicType.STRING) {
+				value = this.createRandomString(3);
+			} else {
+				return DEFAULT;
+			}
 		}
+		Type realType = var.type();
 
 		// TODO: %=, &=, |=, ^=, <<=, >>=, >>>= for integral types only
 
-		String incr = switch (this.random.nextInt(4)) {
+		String incr = type == BasicType.STRING ? "+=" : switch (this.random.nextInt(4)) {
 			case 0 -> "+=";
 			case 1 -> "-=";
 			case 2 -> "*=";
@@ -272,7 +362,15 @@ public class ExpressionCreator {
 		StringBuilder val = new StringBuilder();
 		value.javaLike(val);
 
-		return builder -> builder.append(var.name()).append(" ").append(incr).append(" ").append(val);
+		return builder -> {
+			builder.append(var.name());
+			if (realType instanceof ArrayType at) {
+				for (int i = 0; i < at.depth(); i++) {
+					builder.append("[").append(buildIntegralExpression(vars).toJava()).append("]");
+				}
+			}
+			builder.append(" ").append(incr).append(" ").append(val);
+		};
 	}
 
 	public LiteralExpression createPrimitiveConstantExpression(PrimitiveTypes primitiveType) {

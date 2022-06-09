@@ -19,7 +19,7 @@ public final class CompilingCreator {
 	private static final String QF_JAR = System.getProperty("QF_JAR", null);
 
 	public static void main(String[] args) throws Exception {
-		int count = 200;
+		int count = 500;
 
 		Path path = deleteDirs();
 
@@ -52,7 +52,7 @@ public final class CompilingCreator {
 				builder.createInfiniteLoops(createInfiniteLoops);
 
 				final long seed = seedGenerator.nextLong() + 3;
-				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(5));
+				Statement statement = (new Creator(new JavaVersion(17, true), seed)).method(builder.build(8));
 
 				StringBuilder stringBuilder = new StringBuilder();
 				stringBuilder.append("import java.util.*;\n");

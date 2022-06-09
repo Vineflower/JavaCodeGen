@@ -669,7 +669,11 @@ public class Creator {
 		}
 
 		Params div(double scale) {
-			return new Params(this.createLabels, this.createInfiniteLoops, this.size / scale);
+			return ofSize(this.size / scale);
+		}
+
+		Params ofSize(double size) {
+			return new Params(this.createLabels, this.createInfiniteLoops, size);
 		}
 
 		// poisson distribution
