@@ -1,6 +1,7 @@
 package org.quiltmc.javacodegen;
 
 import org.quiltmc.javacodegen.statement.Statement;
+import org.quiltmc.javacodegen.validation.IntTrueValidator;
 import org.quiltmc.javacodegen.validation.NoLabelValidator;
 import org.quiltmc.javacodegen.validation.NoStackVarValidator;
 import org.quiltmc.javacodegen.vars.VarsEntry;
@@ -110,6 +111,7 @@ public final class CompilingCreator {
 			}
 
 			NoStackVarValidator.INSTANCE.validateFolder(decompiled);
+			IntTrueValidator.INSTANCE.validateFolder(decompiled);
 
 			if (!createLabels) {
 				NoLabelValidator.INSTANCE.validateFolder(decompiled);
