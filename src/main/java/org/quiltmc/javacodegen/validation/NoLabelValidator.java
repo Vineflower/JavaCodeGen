@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 public enum NoLabelValidator implements FileValidator.OfText {
 	INSTANCE;
 
-	static final Pattern LABEL_PATTERN = Pattern.compile("label(\\d+;|\\d+:|_\\d+)");
+	static final Pattern LABEL_PATTERN = Pattern.compile("label(\\d+;|\\d+:|_\\d+|<.*)");
 
 	@Override
 	public void validate(String text) {
