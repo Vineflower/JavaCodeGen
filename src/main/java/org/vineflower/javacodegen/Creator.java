@@ -276,7 +276,7 @@ public class Creator {
 		VarsEntry previousCaseVars = VarsEntry.never();
 		List<SwitchStatement.CaseBranch> caseBranches = new ArrayList<>();
 		List<SimpleSingleNoFallThroughStatement> allBreakOuts = new ArrayList<>();
-		int needsDefault = includeDefault ? this.random.nextInt(Math.max(branchAmt, 1)) + 1 : -1;
+		int needsDefault = includeDefault ? switchContext.changeDefaultPosition(this.random.nextInt(Math.max(branchAmt, 1)) + 1) : -1;
 		if (includeDefault) {
 			branchAmt = Math.max(branchAmt, 1);
 		}

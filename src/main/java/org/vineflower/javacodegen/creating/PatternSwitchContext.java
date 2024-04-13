@@ -95,6 +95,11 @@ public class PatternSwitchContext implements SwitchContext {
 	}
 
 	@Override
+	public int changeDefaultPosition(int defaultPosition) {
+		return 1; // default is always last for patterns, otherwise we may end up with dominance issues.
+	}
+
+	@Override
 	public Predicate<Type> buildFilter() {
 		return t -> t == BasicType.OBJECT;
 	}

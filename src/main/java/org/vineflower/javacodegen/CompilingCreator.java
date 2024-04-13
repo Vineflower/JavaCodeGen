@@ -89,7 +89,7 @@ public final class CompilingCreator {
 		Files.write(path.resolve("paths.txt"), paths);
 
 		Process exec = Runtime.getRuntime().exec(
-			"javac --enable-preview --release 17 -encoding utf-8 -g -d " + compiled.toAbsolutePath() + " @" + path.resolve("paths.txt"));
+			"javac -encoding utf-8 -g -d " + compiled.toAbsolutePath() + " @" + path.resolve("paths.txt"));
 
 		BufferedReader serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 
@@ -128,7 +128,7 @@ public final class CompilingCreator {
 			Files.write(path.resolve("paths.txt"), paths);
 
 			exec = Runtime.getRuntime().exec(
-				"javac --enable-preview --release 17 -encoding utf-8 -g -d " + recompiled.toAbsolutePath() + " @" + path.resolve("paths.txt"));
+				"javac -encoding utf-8 -g -d " + recompiled.toAbsolutePath() + " @" + path.resolve("paths.txt"));
 
 			serr = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 

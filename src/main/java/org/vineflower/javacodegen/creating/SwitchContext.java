@@ -37,6 +37,10 @@ public interface SwitchContext {
 		return includeDefault;
 	}
 
+	default int changeDefaultPosition(int defaultPosition) {
+		return defaultPosition;
+	}
+
 	LiteralExpression makeCaseLiteral(ExpressionCreator expressionCreator);
 
 	Predicate<Type> buildFilter();
