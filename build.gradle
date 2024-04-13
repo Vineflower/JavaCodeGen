@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group 'org.example'
+group 'org.vineflower'
 version '1.0-SNAPSHOT'
 
 repositories {
@@ -17,7 +17,7 @@ dependencies {
 
 java {
     toolchain {
-        languageVersion  = JavaLanguageVersion.of(17)
+        languageVersion  = JavaLanguageVersion.of(21)
     }
 }
 
